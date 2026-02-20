@@ -1,0 +1,6 @@
+name: gcp-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11.8
+  - pip
