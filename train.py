@@ -19,13 +19,13 @@ torch.manual_seed(42)
 np.random.seed(5)
 
 from src.models.baseline import (
-    AutoRegressiveBoxGenerator,
     DPP_AR_loss,
     DPP_loss_adjacency,
     latent_dim,
     mi_loss,
     volume_limits,
 )
+from src.models.causal_transformer import CausalTransformerBoxGenerator
 
 # Define device
 device = torch.device(
@@ -141,7 +141,7 @@ def train_internals():
     infonce_loss_history = []
     loss_weights_history = []
 
-    model = AutoRegressiveBoxGenerator().to(device)
+    model = CausalTransformerBoxGenerator().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     for epoch in tqdm(range(epochs), ncols=100):
@@ -288,7 +288,7 @@ def train_internals():
     # Save the model
     torch.save(
         model.state_dict(),
-        os.path.join(os.path.dirname(__file__), "box_arrangement_model.pth"),
+        os.path.join(os.path.dirname(__file__), "box_arrangement_model_ct.pth"),
     )
 
 
