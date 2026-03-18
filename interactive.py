@@ -14,18 +14,16 @@ root_dir = os.path.dirname(
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
+from src.config import latent_dim, volume_limits
 from src.geometry.internals import Internals
 from src.inference import batch_optimized_inference
-from src.models.baseline import (
-    AutoRegressiveBoxGenerator,
-    latent_dim,
-    volume_limits,
-)
+from src.models.baseline import AutoRegressiveBoxGenerator
 
 # Initialize model with same parameters as training
 model = AutoRegressiveBoxGenerator()
+# model = CausalTransformerBoxGenerator()
 
-model_path = os.path.join(os.path.dirname(__file__), "box_arrangement_model.pth")
+model_path = os.path.join(os.path.dirname(__file__), "box_arrangement_model10_MLP.pth")
 if os.path.exists(model_path):
     model.load_state_dict(torch.load(model_path))
     print("Loaded pretrained model from", model_path)

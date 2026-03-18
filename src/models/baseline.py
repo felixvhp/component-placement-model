@@ -1,20 +1,16 @@
 import torch
 from torch import nn
 
-latent_dim = 4
-requirement_dim = 1  # Volume
+from src.config import (
+    box_dim,
+    height_limits,
+    latent_dim,
+    length_limits,
+    requirement_dim,
+    width_limits,
+)
+
 embedding_dim = 1024  # Embedded previously generated boxes
-
-box_dim = 6
-
-length_limits = [0.1, 1.5]  # m
-width_limits = [0.1, 0.5]  # m
-height_limits = [0.1, 0.5]  # m
-
-volume_limits = [
-    0.005,
-    0.1,
-]  # m3    --> 5 - 100 L, which is still quite large for a UAV
 
 MAIN_INPUT_DIM = latent_dim + requirement_dim + embedding_dim + 1
 AUX_INPUT_DIM = 3 + embedding_dim + 1  # xyz, seq_len, i
@@ -148,135 +144,3 @@ class AutoRegressiveBoxGenerator(nn.Module):
             boxes,
             z_prediction,
         )  # Return both main predictions and auxiliary predictions
-
-
-# -------------------------------------------------
-#            Mutual Information Loss
-# -------------------------------------------------
-
-
-def mi_loss(latent_codes, latent_code_guess, temperature=0.1):
-
-    batch_size = latent_codes.shape[0]
-
-    # Normalize the vectors
-    latent_codes = torch.nn.functional.normalize(latent_codes, dim=1)
-    latent_code_guess = torch.nn.functional.normalize(latent_code_guess, dim=1)
-
-    # Compute similarity matrix
-    sim_matrix = torch.matmul(latent_code_guess, latent_codes.T) / temperature
-
-    # InfoNCE loss
-    labels = torch.arange(batch_size, device=latent_codes.device)
-    loss = torch.nn.functional.cross_entropy(sim_matrix, labels)
-
-    return loss
-
-
-# -------------------------------------------------
-#            DPP losses
-# -------------------------------------------------
-
-
-def DPP_loss(x, sigma=1, eps=1e-6):
-
-    batch_size, seq_len, box_dim = x.shape
-    assert seq_len > 1, (
-        "seq_len must be greater than 1: cannot compute DPP loss for a single box"
-    )
-
-    x_flat = x.reshape(
-        batch_size, -1
-    )  # [batch_size, seq_len * box_dim]  --> since we only want to compare similarity across batch, not within box sequence!
-
-    # Similarity
-    mean, std = torch.mean(x_flat, dim=0), torch.std(x_flat, dim=0)
-    x_flat_normalized = (x_flat - mean) / (std + 1e-6)
-
-    D2 = torch.cdist(x_flat_normalized, x_flat_normalized).pow(2)
-    K = torch.exp(-D2 / (2 * sigma**2))
-
-    try:
-        identity = torch.eye(batch_size, device=K.device)
-        K = K + identity * eps
-        L_c = torch.linalg.cholesky(K)
-        log_det = 2 * torch.log(torch.diagonal(L_c)).sum()
-        # Normalize by matrix size
-        log_det = log_det / batch_size
-    except Exception:
-        # Move to CPU for eigenvalue calculation
-        L_cpu = K.cpu()
-        eigenvalues = torch.linalg.eigvalsh(L_cpu)
-        eigenvalues = torch.clamp(eigenvalues, min=eps)
-        log_det = torch.log(eigenvalues).sum()
-        # Normalize by matrix size
-        log_det = log_det / batch_size
-        log_det = log_det.to(K.device)
-
-    return -log_det
-
-
-# -------------------------------------------------
-#        DPP loss
-# -------------------------------------------------
-
-
-def DPP_AR_loss(x, sigma=1, eps=1e-6):
-
-    # Collapse (n, 2) → (2*n) so we get batchsize vectors of size 2*n
-    x = x.view(x.size(0), -1)
-
-    D2 = torch.cdist(x, x).pow(2)
-    K = torch.exp(-D2 / (2 * sigma**2))
-
-    try:
-        identity = torch.eye(K.shape[0], device=K.device)
-        K = K + identity * eps
-        L_c = torch.linalg.cholesky(K)
-        log_det = 2 * torch.log(torch.diagonal(L_c)).sum()
-        # Normalize by matrix size
-        log_det = log_det / K.shape[0]
-    except Exception:
-        # Move to CPU for eigenvalue calculation
-        L_cpu = K.cpu()
-        eigenvalues = torch.linalg.eigvalsh(L_cpu)
-        eigenvalues = torch.clamp(eigenvalues, min=eps)
-        log_det = torch.log(eigenvalues).sum()
-        # Normalize by matrix size
-        log_det = log_det / K.shape[0]
-        log_det = log_det.to(K.device)
-
-    return -log_det
-
-
-def DPP_loss_adjacency(A, sigma=1, eps=1e-6):
-
-    batch_size, n1, n2 = A.shape
-    A_flat = A.reshape(batch_size, -1)
-
-    assert n1 == n2, "A must be a square matrix"
-    assert A_flat.shape[0] == batch_size and A_flat.shape[1] == n1 * n2, (
-        "Flattening operation not correct"
-    )
-
-    D2 = torch.cdist(A_flat, A_flat).pow(2)
-    K = torch.exp(-D2 / (2 * sigma**2))
-
-    try:
-        identity = torch.eye(batch_size, device=K.device)
-        K = K + identity * eps
-        L_c = torch.linalg.cholesky(K)
-        log_det = 2 * torch.log(torch.diagonal(L_c)).sum()
-        # Normalize by matrix size
-        log_det = log_det / batch_size
-    except Exception:
-        # Move to CPU for eigenvalue calculation
-        L_cpu = K.cpu()
-        eigenvalues = torch.linalg.eigvalsh(L_cpu)
-        eigenvalues = torch.clamp(eigenvalues, min=eps)
-        log_det = torch.log(eigenvalues).sum()
-        # Normalize by matrix size
-        log_det = log_det / batch_size
-        log_det = log_det.to(K.device)
-
-    return -log_det

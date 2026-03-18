@@ -18,12 +18,19 @@ from src.training_plots import plot_training_loss
 torch.manual_seed(42)
 np.random.seed(5)
 
-from src.models.baseline import (
+from src.config import (
+    batch_size,
+    epochs,
+    get_loss_weights,
+    latent_dim,
+    lr,
+    max_seq_length,
+    volume_limits,
+)
+from src.losses import (
     DPP_AR_loss,
     DPP_loss_adjacency,
-    latent_dim,
     mi_loss,
-    volume_limits,
 )
 from src.models.causal_transformer import CausalTransformerBoxGenerator
 
@@ -39,93 +46,6 @@ device = torch.device(
 assert volume_limits[0] > 0, (
     "Volume limits must be greater than 0 to avoid numerical instability (division by 0 in volume loss calc)"
 )
-
-# Training loop
-batch_size = 256
-epochs = 2500
-lr = 5e-4
-max_seq_length = 3
-
-
-def get_loss_weights(epoch):
-
-    λ_volume_initial = 5
-    λ_volume_final = 10
-
-    λ_overlap_initial = 4
-    λ_overlap_final = 20
-
-    λ_compactness_initial = 2
-    λ_compactness_final = 4
-
-    λ_dpp_aspect_ratios_initial = 4
-    λ_dpp_aspect_ratios_final = 1
-
-    λ_ldv_initial = 5e-1
-    λ_ldv_final = 5e-1
-
-    λ_adj_vol_sensitivity_initial = 0
-    λ_adj_vol_sensitivity_final = 0
-
-    λ_infonce_initial = 0.1
-    λ_infonce_final = 0.1
-
-    ramp_start = 500
-    ramp_end = 1500
-
-    if epoch < ramp_start:
-        return (
-            λ_overlap_initial,
-            λ_volume_initial,
-            λ_compactness_initial,
-            λ_ldv_initial,
-            λ_dpp_aspect_ratios_initial,
-            λ_adj_vol_sensitivity_initial,
-            λ_infonce_initial,
-        )
-    elif ramp_end > epoch >= ramp_start:
-        λ_overlap = (λ_overlap_final - λ_overlap_initial) * (epoch - ramp_start) / (
-            ramp_end - ramp_start
-        ) + λ_overlap_initial
-        λ_volume = (λ_volume_final - λ_volume_initial) * (epoch - ramp_start) / (
-            ramp_end - ramp_start
-        ) + λ_volume_initial
-        λ_compactness = (λ_compactness_final - λ_compactness_initial) * (
-            epoch - ramp_start
-        ) / (ramp_end - ramp_start) + λ_compactness_initial
-        λ_ldv = (λ_ldv_final - λ_ldv_initial) * (epoch - ramp_start) / (
-            ramp_end - ramp_start
-        ) + λ_ldv_initial
-        λ_dpp_aspect_ratios = (
-            λ_dpp_aspect_ratios_final - λ_dpp_aspect_ratios_initial
-        ) * (epoch - ramp_start) / (ramp_end - ramp_start) + λ_dpp_aspect_ratios_initial
-        λ_adj_vol_sensitivity = (
-            λ_adj_vol_sensitivity_final - λ_adj_vol_sensitivity_initial
-        ) * (epoch - ramp_start) / (
-            ramp_end - ramp_start
-        ) + λ_adj_vol_sensitivity_initial
-        λ_infonce = (λ_infonce_final - λ_infonce_initial) * (epoch - ramp_start) / (
-            ramp_end - ramp_start
-        ) + λ_infonce_initial
-        return (
-            λ_overlap,
-            λ_volume,
-            λ_compactness,
-            λ_ldv,
-            λ_dpp_aspect_ratios,
-            λ_adj_vol_sensitivity,
-            λ_infonce,
-        )
-    else:
-        return (
-            λ_overlap_final,
-            λ_volume_final,
-            λ_compactness_final,
-            λ_ldv_final,
-            λ_dpp_aspect_ratios_final,
-            λ_adj_vol_sensitivity_final,
-            λ_infonce_final,
-        )
 
 
 def train_internals():

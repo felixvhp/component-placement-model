@@ -4,16 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from src.config import latent_dim, volume_limits
 from src.geometry.internals import BatchInternals
 from src.inference import batch_optimized_inference
-from src.models.baseline import (
-    DPP_AR_loss,
-    DPP_loss,
-    DPP_loss_adjacency,
-    latent_dim,
-    mi_loss,
-    volume_limits,
-)
+from src.losses import DPP_AR_loss, DPP_loss, DPP_loss_adjacency, mi_loss
 from src.models.causal_transformer import CausalTransformerBoxGenerator
 
 device = torch.device(

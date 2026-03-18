@@ -1,7 +1,7 @@
 import torch
 
+from .config import volume_limits
 from .geometry.internals import BatchInternals
-from .models.baseline import volume_limits
 
 # -------------------------------------------------------------
 #  Pytorch "unrolled" gradient descent
@@ -55,7 +55,6 @@ def batch_optimized_inference(
         )
 
         # iterate on xyz to find final compact + non-overlapping layout
-        steps_taken = 0
         for i in range(iterations):
             # Assess layout quality
             internals = BatchInternals(xyz_opt, lwh_fixed)
@@ -93,7 +92,4 @@ def batch_optimized_inference(
             # Increase overlap penalty
             λ_overlap *= 1.5
 
-            steps_taken += 1
-
-        print(f"Cleanup steps taken: {steps_taken}/{iterations}")
         return xyz_opt, lwh_fixed
