@@ -17,15 +17,18 @@ if root_dir not in sys.path:
 from src.config import latent_dim, volume_limits
 from src.geometry.internals import Internals
 from src.inference import batch_optimized_inference
+from src.models.atiss import CTATISSBoxGenerator
 from src.models.baseline import AutoRegressiveBoxGenerator
+from src.models.causal_transformer import CausalTransformerBoxGenerator
 
 # Initialize model with same parameters as training
 model = AutoRegressiveBoxGenerator()
 # model = CausalTransformerBoxGenerator()
+# model = CTATISSBoxGenerator()
 
-model_path = os.path.join(os.path.dirname(__file__), "box_arrangement_model10_MLP.pth")
+model_path = os.path.join(os.path.dirname(__file__), "experiments/MLP_v1_seqlen10.pth")
 if os.path.exists(model_path):
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path, map_location="cpu"))
     print("Loaded pretrained model from", model_path)
 else:
     print("Warning: Could not find pretrained model at", model_path)
@@ -33,7 +36,7 @@ model.eval()  # Set to evaluation mode
 
 # Initial values
 n_boxes = 3
-volumes = torch.ones(1, n_boxes) * 0.7
+volumes = torch.ones(1, n_boxes) * 0.05
 latent_z = torch.zeros(1, latent_dim)
 
 # Create figure and subplots
@@ -48,7 +51,7 @@ adjacency_text = fig.text(
 )  # New text element for adjacency matrices
 
 # Create main 3D plot in the center
-ax3d = fig.add_axes([0.25, 0.1, 0.5, 0.8], projection="3d")
+ax3d = fig.add_axes((0.25, 0.1, 0.5, 0.8), projection="3d")
 ax3d.set_xlabel("X (m)", fontsize=12)
 ax3d.set_ylabel("Y (m)", fontsize=12)
 ax3d.set_zlabel("Z (m)", fontsize=12)
@@ -64,15 +67,17 @@ volume_x = 0.05
 volume_sliders = []
 for i in range(n_boxes):
     ax = plt.axes(
-        [volume_x, 0.55 - i * (slider_height + gap), slider_width, slider_height]
+        (volume_x, 0.55 - i * (slider_height + gap), slider_width, slider_height)
     )
-    slider = Slider(ax, f"Vol {i + 1}", volume_limits[0], volume_limits[1], valinit=0.7)
+    slider = Slider(
+        ax, f"Vol {i + 1}", volume_limits[0], volume_limits[1], valinit=0.05
+    )
     volume_sliders.append(slider)
 
 # Right side - n_boxes and latent sliders
 right_x = 0.8
 # N boxes slider at the top right
-ax_n_boxes = plt.axes([right_x, 0.8, slider_width, slider_height])
+ax_n_boxes = plt.axes((right_x, 0.8, slider_width, slider_height))
 s_n_boxes = Slider(ax_n_boxes, "N Boxes", 1, 10, valinit=n_boxes, valstep=1)
 
 # Latent sliders below n_boxes
@@ -272,7 +277,9 @@ def update_n_boxes(val):
 
     # Update number of boxes and volumes tensor
     n_boxes = int(val)
-    volumes = torch.ones(1, n_boxes)  # Changed to 2D tensor [batch_size, seq_len]
+    volumes = (
+        torch.ones(1, n_boxes) * 0.05
+    )  # Changed to 2D tensor [batch_size, seq_len]
 
     # Calculate new positions
     slider_width = 0.15

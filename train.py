@@ -208,7 +208,7 @@ def train_internals():
     # Save the model
     torch.save(
         model.state_dict(),
-        os.path.join(os.path.dirname(__file__), "box_arrangement_model_ct.pth"),
+        os.path.join(os.path.dirname(__file__), "experiments/ct_v3_seqlen10.pth"),
     )
 
 

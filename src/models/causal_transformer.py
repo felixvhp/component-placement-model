@@ -11,9 +11,9 @@ from src.config import (
 
 volume_limits = [0.005, 0.1]
 
-D_MODEL = 128
-N_HEAD = 4
-N_LAYERS = 3
+D_MODEL = 256
+N_HEAD = 8
+N_LAYERS = 4
 DIM_FF = 512
 DROPOUT = 0.0
 MAX_SEQ_LEN = 25
@@ -129,10 +129,10 @@ class CausalTransformerBoxGenerator(nn.Module):
         current_seq = torch.stack([z_tok, sl_tok], dim=1)
 
         for i in range(seq_len):
-            # pos
+            # qury token
             q_tok = self.vol_proj(volume[:, i].unsqueeze(-1)) + self._pos(2 + i, device)
 
-            # query token
+            # add it
             seq_in = torch.cat([current_seq, q_tok.unsqueeze(1)], dim=1)
 
             h = self.transformer(seq_in)
