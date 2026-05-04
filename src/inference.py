@@ -9,7 +9,13 @@ from .geometry.internals import BatchInternals
 
 
 def batch_optimized_inference(
-    model, target_volumes, latent_codes, iterations=5, lr=0.1, max_grad_norm=1.0
+    model,
+    target_volumes,
+    latent_codes,
+    target=None,
+    iterations=5,
+    lr=0.1,
+    max_grad_norm=1.0,
 ):
 
     batch_size = target_volumes.shape[0]
@@ -36,9 +42,10 @@ def batch_optimized_inference(
 
     with torch.enable_grad():
         # Forward pass on trained model
-        bx_pred, _ = model.forward(
-            target_volumes, latent_codes
-        )  # [batch_size, seq_len, box_dim]
+        if target is not None:
+            bx_pred, _ = model.forward(target_volumes, latent_codes, target=target)
+        else:
+            bx_pred, _ = model.forward(target_volumes, latent_codes)
         lwh_fixed = bx_pred[:, :, :3].clone()  # [seq_len, 3] numpy array
         xyz_init = bx_pred[:, :, 3:].clone()  # [seq_len, 3] numpy array
 
