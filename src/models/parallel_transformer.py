@@ -160,9 +160,9 @@ class ParallelBoxGenerator(nn.Module):
 
         # cross attention conyrxt
         context = self.sl_proj(seq_len_t).unsqueeze(1)
-        # z_token = c.unsqueeze(1)
-        # sl_token = self.sl_proj(seq_len_t).unsqueeze(1)
-        # context = torch.cat([z_token, sl_token], dim=1)
+        z_token = c.unsqueeze(1)
+        sl_token = self.sl_proj(seq_len_t).unsqueeze(1)
+        context = torch.cat([z_token, sl_token], dim=1)
 
         # make query vectors out volumes
         vol_features = self.pe_vol(volume.unsqueeze(-1))
