@@ -6,12 +6,15 @@ import numpy as np
 import torch
 
 from src.config import latent_dim, volume_limits
+from src.constraints import sample_target, satisfaction_rate
 from src.geometry.internals import BatchInternals
 from src.inference import batch_optimized_inference
 from src.losses import DPP_AR_loss, DPP_loss, DPP_loss_adjacency, mi_loss
 from src.models.atiss import CTATISSBoxGenerator
 from src.models.baseline import AutoRegressiveBoxGenerator
 from src.models.causal_transformer import CausalTransformerBoxGenerator
+from src.models.conditional_parallel import ConditionalParallelBoxGenerator
+from src.models.parallel_transformer import ParallelBoxGenerator
 
 device = torch.device(
     "cuda"
@@ -26,14 +29,16 @@ MODEL_CLASSES = {
     "ct": CausalTransformerBoxGenerator,
     "ctatiss": CTATISSBoxGenerator,
     "mlp": AutoRegressiveBoxGenerator,
+    "parallel": ParallelBoxGenerator,
+    "cond_parallel": ConditionalParallelBoxGenerator,
 }
 
-DEFAULT_WEIGHTS = "experiments/ctatiss_v5_seqlen10.pth"
-DEFAULT_MODEL = "ctatiss"
-DEFAULT_SEQ_LEN = 10
+DEFAULT_WEIGHTS = "experiments/conditional_parallel.pth"
+DEFAULT_MODEL = "cond_parallel"
+DEFAULT_SEQ_LEN = 3
 DEFAULT_N = 100
 DEFAULT_NUM_SEEDS = 10
-DEFAULT_OUTPUT_DIR = "smoothness/ctatiss"
+DEFAULT_OUTPUT_DIR = "smoothness/conditional"
 
 
 def parse_args():
@@ -48,6 +53,7 @@ def parse_args():
     parser.add_argument("--output_dir", type=str, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--plot_name", type=str, default="")
     parser.add_argument("--skip_smoothness", action="store_true")
+    parser.add_argument("--conditional", type=bool, default=True)
     return parser.parse_args()
 
 
@@ -65,7 +71,7 @@ def run_model(model, z, volumes):
     return xyz, lwh
 
 
-def evaluate_seed(model, seed, N, seq_len):
+def evaluate_seed(model, seed, N, seq_len, conditional=False, density=0.3):
     torch.manual_seed(seed)
 
     z_samples = torch.randn(N, latent_dim, device=device)
@@ -80,9 +86,16 @@ def evaluate_seed(model, seed, N, seq_len):
     rough_vol = internals.getRoughVolume()
     fill_ratio = (actual_vols.sum(dim=1) / rough_vol).mean().item()
 
+    targets = None
+    if conditional:
+        targets = sample_target(N, seq_len, density=density, device=device)
+
     # DPP diversity
     with torch.no_grad():
-        boxes_batch, _ = model(volumes, z_samples)
+        if conditional:
+            boxes_batch, z_pred = model(volumes, z_samples, target=targets)
+        else:
+            boxes_batch, z_pred = model(volumes, z_samples)
     dpp_scores = []
     for _ in range(20):
         idx = torch.randperm(N)[:35]
@@ -91,7 +104,10 @@ def evaluate_seed(model, seed, N, seq_len):
 
     # MI
     with torch.no_grad():
-        boxes_eval, z_pred = model(volumes, z_samples)
+        if conditional:
+            boxes_eval, z_pred = model(volumes, z_samples, target=targets)
+        else:
+            boxes_eval, z_pred = model(volumes, z_samples)
     mi = mi_loss(z_samples, z_pred).item()
 
     # LDV
@@ -112,7 +128,7 @@ def evaluate_seed(model, seed, N, seq_len):
         )
         ar_dpp = DPP_AR_loss(aspect_ratios).item()
 
-    return {
+    result = {
         "overlap": overlap,
         "vol_accuracy": vol_accuracy,
         "compactness": fill_ratio,
@@ -121,6 +137,12 @@ def evaluate_seed(model, seed, N, seq_len):
         "ldv": ldv,
         "ar_dpp": ar_dpp,
     }
+
+    if conditional:
+        measured = torch.stack([Ax, Ay, Az], dim=-1)
+        result["satisfaction"] = satisfaction_rate(measured, targets).item()
+
+    return result
 
 
 def check_gradient_flow(model, seq_len):
@@ -212,6 +234,66 @@ def run_smoothness(model, seq_len, output_dir, plot_name):
     plt.close(fig_z)
 
 
+def run_density_sweep(model, seq_len, N, num_seeds, output_dir, plot_name):
+    densities = [0.1, 0.2, 0.3, 0.5, 0.7, 0.9]
+    results_by_density = {}
+
+    for density in densities:
+        seed_results = []
+        for seed in range(num_seeds):
+            r = evaluate_seed(
+                model, seed, N, seq_len, conditional=True, density=density
+            )
+            seed_results.append(r)
+        agg = {
+            k: (
+                np.mean([r[k] for r in seed_results]),
+                np.std([r[k] for r in seed_results]),
+            )
+            for k in seed_results[0].keys()
+        }
+        results_by_density[density] = agg
+        print(
+            f"density={density:.1f}  "
+            f"sat={agg['satisfaction'][0]:.3f}±{agg['satisfaction'][1]:.3f}  "
+            f"overlap={agg['overlap'][0]:.4f}  "
+            f"vol_acc={agg['vol_accuracy'][0]:.3f}  "
+            f"fill={agg['compactness'][0]:.3f}"
+        )
+
+    # Plot: satisfaction and overlap vs density
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+    ax2 = ax1.twinx()
+
+    sats = [results_by_density[d]["satisfaction"][0] for d in densities]
+    sat_err = [results_by_density[d]["satisfaction"][1] for d in densities]
+    overlaps = [results_by_density[d]["overlap"][0] for d in densities]
+
+    ax1.errorbar(
+        densities,
+        sats,
+        yerr=sat_err,
+        marker="o",
+        color="C0",
+        label="Satisfaction rate",
+    )
+    ax1.set_xlabel("Constraint density")
+    ax1.set_ylabel("Satisfaction rate", color="C0")
+    ax1.set_ylim(0, 1.05)
+    ax1.tick_params(axis="y", labelcolor="C0")
+
+    ax2.plot(densities, overlaps, marker="s", color="C3", label="Overlap")
+    ax2.set_ylabel("Overlap", color="C3")
+    ax2.tick_params(axis="y", labelcolor="C3")
+
+    plt.title(f"Density sweep (seq_len={seq_len}, N={N}, {num_seeds} seeds)")
+    fig.tight_layout()
+    fig.savefig(f"{output_dir}/density_sweep_{seq_len}{plot_name}.png", dpi=300)
+    plt.close(fig)
+
+    return results_by_density
+
+
 # -------------------------------------------------
 #  Main
 # -------------------------------------------------
@@ -221,6 +303,7 @@ if __name__ == "__main__":
     args = parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
 
+    conditional = args.conditional
     # model
     ModelClass = MODEL_CLASSES[args.model]
     model = ModelClass().to(device)
@@ -250,3 +333,15 @@ if __name__ == "__main__":
         print("\nGenerating smoothness plots...")
         run_smoothness(model, args.seq_len, args.output_dir, args.plot_name)
         print(f"Saved to {args.output_dir}/")
+
+    print("\nRunning density sweep...")
+
+    run_density_sweep(
+        model,
+        args.seq_len,
+        args.n,
+        args.num_seeds,
+        args.output_dir,
+        args.plot_name,
+    )
+    print(f"Saved density sweep to {args.output_dir}/")
