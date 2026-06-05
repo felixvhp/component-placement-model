@@ -22,11 +22,13 @@ from src.models.baseline import AutoRegressiveBoxGenerator
 from src.models.causal_transformer import CausalTransformerBoxGenerator
 
 # Initialize model with same parameters as training
-model = AutoRegressiveBoxGenerator()
+# model = AutoRegressiveBoxGenerator()
 # model = CausalTransformerBoxGenerator()
-# model = CTATISSBoxGenerator()
+model = CTATISSBoxGenerator()
 
-model_path = os.path.join(os.path.dirname(__file__), "experiments/MLP_v1_seqlen10.pth")
+model_path = os.path.join(
+    os.path.dirname(__file__), "experiments/ctatiss_v2_seqlen10.pth"
+)
 if os.path.exists(model_path):
     model.load_state_dict(torch.load(model_path, map_location="cpu"))
     print("Loaded pretrained model from", model_path)

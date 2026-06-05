@@ -33,9 +33,9 @@ loss_weight_schedule = {
     "dpp_aspect_ratios": {"initial": 4, "final": 1},
     "ldv": {"initial": 5e-1, "final": 5e-1},
     "adj_vol_sensitivity": {"initial": 0, "final": 0},
-    "infonce": {"initial": 0.1, "final": 0.1},
+    "infonce": {"initial": 1.0, "final": 2.0},
+    "adjacency": {"initial": 1.0, "final": 30.0},
 }
-
 
 def get_loss_weights(epoch):
     s = loss_weight_schedule
@@ -50,6 +50,7 @@ def get_loss_weights(epoch):
         "dpp_aspect_ratios",
         "adj_vol_sensitivity",
         "infonce",
+        "adjacency",
     ]
 
     if epoch < ramp_start:
@@ -61,3 +62,30 @@ def get_loss_weights(epoch):
         )
     else:
         return tuple(s[k]["final"] for k in keys)
+
+# -------------------------------------------------
+#  Projector settings (LM step + PAL-EMA)
+# -------------------------------------------------
+
+projector_config = {
+    "delta": 1e-3,          # YF damping scale: lam = delta * ||c||^2
+    "lam_min": 1e-6,        # damping floor
+    "feas_tol": 1e-7,       # post-projection residual tolerance for EMA
+    "disp_tol": 1e-1,       # displacement tolerance for EMA
+    "ema_max_decades": 1.0,
+    "ema_rate": 1e-2,
+    "grad_clip": 20.0,      # gradient clip norm (supervisor default)
+}
+
+
+# -------------------------------------------------
+#  Fixed objective weights
+# -------------------------------------------------
+
+objective_weights = {
+    "conform": 30.0,
+    "compactness": 3.0,
+    "dpp_aspect_ratios": 2.0,
+    "ldv": 0.5,
+    "infonce": 0.1,
+}

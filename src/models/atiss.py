@@ -8,6 +8,7 @@ from src.config import (
     length_limits,
     width_limits,
 )
+from src.models.dit_block import BoxDiTBlock, zero_init_adaln
 
 volume_limits = [0.005, 0.1]
 
@@ -65,7 +66,11 @@ class CTATISSBoxGenerator(nn.Module):
         super().__init__()
         self.device = device or torch.device("cpu")
 
-        self.z_proj = nn.Linear(latent_dim, D_MODEL)
+        self.z_proj = nn.Sequential(
+            nn.Linear(latent_dim, D_MODEL),
+            nn.SiLU(),
+            nn.Linear(D_MODEL, D_MODEL),
+        )
         self.sl_proj = nn.Linear(1, D_MODEL)
 
         self.pe_vol = FourierEncoding(proj_dims=64)
@@ -78,20 +83,20 @@ class CTATISSBoxGenerator(nn.Module):
         self.pe_y = FourierEncoding(proj_dims=42)
         self.pe_z = FourierEncoding(proj_dims=42)
         self.box_combine = nn.Linear(252, D_MODEL)
+        self.slot_combine = nn.Linear(D_MODEL + D_MODEL + D_MODEL, D_MODEL)
 
         # positional embeddings to be removed eventually
         self.pos_emb = nn.Embedding(MAX_SEQ_LEN + 4, D_MODEL)
 
-        enc_layer = nn.TransformerEncoderLayer(
-            d_model=D_MODEL,
-            nhead=N_HEAD,
-            dim_feedforward=DIM_FF,
-            dropout=DROPOUT,
-            batch_first=True,
-            norm_first=True,  # pre-LN normalization more stable?
-            activation="gelu",
+        self.blocks = nn.ModuleList(
+            [
+                BoxDiTBlock(
+                    D_MODEL, N_HEAD, mlp_ratio=DIM_FF / D_MODEL, dropout=DROPOUT
+                )
+                for _ in range(N_LAYERS)
+            ]
         )
-        self.transformer = nn.TransformerEncoder(enc_layer, num_layers=N_LAYERS)
+        zero_init_adaln(self.blocks)
 
         # output head maybe add latent code later
         self.output_head = nn.Sequential(
@@ -141,11 +146,9 @@ class CTATISSBoxGenerator(nn.Module):
         seq_len_t = seq_len * torch.ones(batch_size, 1, device=device)
 
         # context tokens - positional embeddings to be removed
-        z_tok = self.z_proj(latent_z) + self._pos(0, device)
-        sl_tok = self.sl_proj(seq_len_t) + self._pos(1, device)
-
-        # initial token matrix
-        current_seq = torch.stack([z_tok, sl_tok], dim=1)
+        c = self.z_proj(latent_z)  # [batch, D_MODEL] — adaLN conditioning
+        sl_tok = self.sl_proj(seq_len_t) + self._pos(0, device)  # shifted to pos 0
+        current_seq = sl_tok.unsqueeze(1)
 
         for i in range(seq_len):
             # qury token
@@ -154,7 +157,9 @@ class CTATISSBoxGenerator(nn.Module):
             # add it
             seq_in = torch.cat([current_seq, q_tok.unsqueeze(1)], dim=1)
 
-            h = self.transformer(seq_in)
+            h = seq_in
+            for block in self.blocks:
+                h = block(h, c)
             h_last = h[:, -1, :]
 
             # predict box
@@ -180,10 +185,15 @@ class CTATISSBoxGenerator(nn.Module):
                 dim=-1,
             )
 
-            slot_tok = (
-                self.vol_combine(self.pe_vol(volume[:, i].unsqueeze(-1)))
-                + self.box_combine(box_feat)
-                + self._pos(2 + i, device)
+            slot_tok = self.slot_combine(
+                torch.cat(
+                    [
+                        self.vol_combine(self.pe_vol(volume[:, i].unsqueeze(-1))),
+                        self.box_combine(box_feat),
+                        self._pos(1 + i, device).expand(batch_size, -1),
+                    ],
+                    dim=-1,
+                )
             )
 
             current_seq = torch.cat([current_seq, slot_tok.unsqueeze(1)], dim=1)
