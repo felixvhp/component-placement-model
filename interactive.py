@@ -4,7 +4,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from matplotlib.widgets import Slider, TextBox
+from matplotlib.widgets import Slider
 
 # Add parent directory to path for UAV imports
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,24 +15,19 @@ if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
 from src.config import latent_dim, volume_limits
-from src.constraints import sample_target
 from src.geometry.internals import Internals
 from src.inference import batch_optimized_inference
 from src.models.atiss import CTATISSBoxGenerator
 from src.models.baseline import AutoRegressiveBoxGenerator
 from src.models.causal_transformer import CausalTransformerBoxGenerator
-from src.models.conditional_parallel import ConditionalParallelBoxGenerator
-from src.models.parallel_transformer import ParallelBoxGenerator
 
 # Initialize model with same parameters as training
 # model = AutoRegressiveBoxGenerator()
 # model = CausalTransformerBoxGenerator()
-# model = CTATISSBoxGenerator()
-# model = ParallelBoxGenerator()
-model = ConditionalParallelBoxGenerator()
+model = CTATISSBoxGenerator()
 
 model_path = os.path.join(
-    os.path.dirname(__file__), "experiments/conditional_parallel2.pth"
+    os.path.dirname(__file__), "experiments/ctatiss_v2_seqlen10.pth"
 )
 if os.path.exists(model_path):
     model.load_state_dict(torch.load(model_path, map_location="cpu"))
@@ -45,8 +40,6 @@ model.eval()  # Set to evaluation mode
 n_boxes = 3
 volumes = torch.ones(1, n_boxes) * 0.05
 latent_z = torch.zeros(1, latent_dim)
-target_adjacency = torch.zeros(1, n_boxes, n_boxes, 3)
-conditional = True
 
 # Create figure and subplots
 fig = plt.figure(figsize=(20, 10))
@@ -98,53 +91,10 @@ for i in range(latent_dim):
     slider = Slider(ax, f"z{i}", -3.0, 3.0, valinit=0.0)
     latent_sliders.append(slider)
 
-ax_constraint = plt.axes((0.05, 0.05, 0.4, 0.03))
-constraint_box = TextBox(ax_constraint, "Constraints", initial="")
-
-
-def parse_constraints(text, n):
-    """
-    Parse strings like '0>2x, 1<3z' into a [1, n, n, 3] tensor.
-    '>' means +0.8 on the chosen axis, '<' means -0.8.
-    Axis char: x=0, z=2. (y skipped for 2D)
-    """
-    tgt = torch.zeros(1, n, n, 3)
-    for part in text.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        try:
-            sep = ">" if ">" in part else "<"
-            sign = 0.8 if sep == ">" else -0.8
-            left, right = part.split(sep)
-            i = int(left.strip())
-            j = int(right[:-1].strip())
-            axis_char = right[-1].lower()
-            axis = {"x": 0, "z": 2}[axis_char]
-            if i < n and j < n and i != j:
-                tgt[0, i, j, axis] = sign
-                tgt[0, j, i, axis] = -sign
-        except Exception as e:
-            print(f"Skipping malformed constraint '{part}': {e}")
-    return tgt
-
-
-def on_constraints_changed(text):
-    global target_adjacency
-    target_adjacency = parse_constraints(text, n_boxes)
-    print(
-        f"Resulting target has {(target_adjacency != 0).sum().item()} nonzero entries"
-    )
-    update(None)
-
-
-constraint_box.on_submit(on_constraints_changed)
-
 
 def update(val):
     global n_boxes, volumes, latent_z, volume_sliders, latent_sliders
     ax3d.clear()
-    print(f"[DEBUG] target nonzero: {(target_adjacency != 0).sum().item()}")
     ax3d.set_proj_type("ortho")  # Set orthographic projection
 
     # Set plot appearance
@@ -175,13 +125,9 @@ def update(val):
         print(latent_z)
 
         print("\nGenerating box arrangement...")
-        if conditional:
-            bx_pred, _ = model.forward(volumes, latent_z, target=target_adjacency)
-        else:
-            bx_pred, _ = model.forward(volumes, latent_z)
+        bx_pred, _ = model.forward(volumes, latent_z)
         lwh = bx_pred[:, :, :3]
         xyz = bx_pred[:, :, 3:]
-        print(f"[DEBUG] xyz[0] = {xyz[0].cpu().numpy().round(3)}")
 
         print("\nOutput box dimensions (length, width, height):")
         print(lwh)
@@ -191,7 +137,7 @@ def update(val):
         # Run optimized inference
         print("\nRunning optimized inference...")
         xyz_opt_batch, lwh_opt_batch = batch_optimized_inference(
-            model, volumes, latent_z, target=target_adjacency if conditional else None
+            model, volumes, latent_z
         )
 
     # Create Internals objects and plot boxes
@@ -207,21 +153,6 @@ def update(val):
     internals.getBoxSurfaces(ax3d, np.array([0, 0, 0]), alpha=0.1)
     # Plot optimized boxes with higher alpha
     optimized_internals.getBoxSurfaces(ax3d, np.array([0, 0, 0]), alpha=1)
-
-    for i in range(n_boxes):
-        pos = xyz_opt_batch[0, i].detach().cpu().numpy()
-        ax3d.text(
-            pos[0],
-            pos[1],
-            pos[2],
-            str(i),
-            fontsize=14,
-            fontweight="bold",
-            color="black",
-            ha="center",
-            va="center",
-            zorder=1000,  # draw on top
-        )
 
     # Calculate metrics for both layouts
     orig_frontal_area = internals.getViewArea("frontal")
@@ -339,7 +270,7 @@ def update(val):
 
 
 def update_n_boxes(val):
-    global n_boxes, volumes, volume_sliders, target_adjacency
+    global n_boxes, volumes, volume_sliders
 
     # Clear old volume sliders
     for slider in volume_sliders:
@@ -351,9 +282,6 @@ def update_n_boxes(val):
     volumes = (
         torch.ones(1, n_boxes) * 0.05
     )  # Changed to 2D tensor [batch_size, seq_len]
-
-    target_adjacency = torch.zeros(1, n_boxes, n_boxes, 3)  # NEW: reset
-    constraint_box.set_val("")
 
     # Calculate new positions
     slider_width = 0.15
@@ -367,7 +295,7 @@ def update_n_boxes(val):
             [volume_x, 0.55 - i * (slider_height + gap), slider_width, slider_height]
         )
         slider = Slider(
-            ax, f"Vol {i + 1}", volume_limits[0], volume_limits[1], valinit=0.05
+            ax, f"Vol {i + 1}", volume_limits[0], volume_limits[1], valinit=0.7
         )
         slider.on_changed(update)
         volume_sliders.append(slider)

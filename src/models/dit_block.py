@@ -8,6 +8,15 @@ def modulate(x, shift, scale):
 
 
 class BoxDiTBlock(nn.Module):
+    """
+    Transformer block with adaLN-Zero conditioning.
+    Adapted from DiT (Peebles & Xie, 2023) for autoregressive box placement.
+
+    The conditioning vector c (projected latent z) modulates every LayerNorm
+    via learned shift, scale, and gate parameters. Zero-initialized so each
+    block starts as the identity function.
+    """
+
     def __init__(self, hidden_size, num_heads, mlp_ratio=4.0, dropout=0.0):
         super().__init__()
 
@@ -142,6 +151,10 @@ def zero_init_adaln(blocks, final_layer=None):
     """
     Zero-initialize all adaLN modulation layers so each block starts as identity.
     Call this after model construction.
+
+    Args:
+        blocks: nn.ModuleList of BoxDiTBlock
+        final_layer: optional FinalAdaLN instance
     """
     for block in blocks:
         nn.init.constant_(block.adaLN_modulation[-1].weight, 0)

@@ -8,8 +8,8 @@ from src.config import (
     length_limits,
     width_limits,
 )
-from src.gnn_encoder import GNNConstraintEncoder
 from src.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
+from src.gnn_encoder import GNNConstraintEncoder
 
 D_MODEL = 256
 N_HEAD = 8
@@ -56,9 +56,11 @@ class FourierEncoding(nn.Module):
         return torch.cat([torch.sin(x * sigma), torch.cos(x * sigma)], dim=-1)
 
 
+
 class ConstraintEncoder(nn.Module):
     """
-    Encodes a target adjacency matrix into vector
+    Encodes a signed-relation target tensor [batch, N, N, 3] into a
+    conditioning vector [batch, D_MODEL] that gets mixed into adaLN.
     """
 
     def __init__(self, max_n=MAX_SEQ_LEN, d_model=D_MODEL):
@@ -71,7 +73,7 @@ class ConstraintEncoder(nn.Module):
             nn.SiLU(),
             nn.Linear(d_model, d_model),
         )
-
+        # Zero-init final layer so encoder starts as no-op (plays nice with adaLN-Zero)
         nn.init.zeros_(self.mlp[-1].weight)
         nn.init.zeros_(self.mlp[-1].bias)
 
@@ -79,12 +81,8 @@ class ConstraintEncoder(nn.Module):
         batch_size, n, _, _ = target.shape
         if n < self.max_n:
             padded = torch.zeros(
-                batch_size,
-                self.max_n,
-                self.max_n,
-                3,
-                device=target.device,
-                dtype=target.dtype,
+                batch_size, self.max_n, self.max_n, 3,
+                device=target.device, dtype=target.dtype,
             )
             padded[:, :n, :n, :] = target
             target = padded
@@ -93,7 +91,7 @@ class ConstraintEncoder(nn.Module):
 
 
 # ─────────────────────────────────────────────────────────────
-#  Conditional Parallel Box Generator
+#  Conditional Parallel Box Generator (DETR-style decoder)
 # ─────────────────────────────────────────────────────────────
 
 
@@ -185,9 +183,7 @@ class ConditionalParallelBoxGenerator(nn.Module):
 
         return box
 
-    def forward(
-        self, volume: torch.Tensor, latent_z: torch.Tensor, target: torch.Tensor = None
-    ):
+    def forward(self, volume: torch.Tensor, latent_z: torch.Tensor, target: torch.Tensor = None):
         """
         volume  : [batch, seq_len]       — target volumes for each box
         latent_z: [batch, latent_dim]    — latent conditioning code
@@ -208,6 +204,7 @@ class ConditionalParallelBoxGenerator(nn.Module):
         # conditioning for adaln
         c = self.z_proj(latent_z)
 
+        # NEW: add constraint encoding into adaLN conditioning
         if target is not None:
             c = c + self.constraint_encoder(target)
 
