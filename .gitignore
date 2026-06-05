@@ -185,3 +185,22 @@ cython_debug/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# ---- Project: experiment outputs & heavy artifacts (Euler) ----
+experiments/
+wandb/
+logs/
+results/
+results2/
+smoothness/
+plots/
+latex/
+tmpdb_*/
+
+# Model checkpoints
+*.pth
+
+# Generated plots / tables at repo root
+density_sweep*.png
+*_table.tex
+conditional_table.tex

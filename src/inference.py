@@ -1,7 +1,10 @@
 import torch
 
+from train2 import make_constraint_fn
+
 from .config import volume_limits
 from .geometry.internals import BatchInternals
+from .projector import lm_project_step, make_constraint_fn
 
 # -------------------------------------------------------------
 #  Pytorch "unrolled" gradient descent
@@ -13,9 +16,10 @@ def batch_optimized_inference(
     target_volumes,
     latent_codes,
     target=None,
-    iterations=5,
+    iterations=10,
     lr=0.1,
     max_grad_norm=1.0,
+    method="projector",
 ):
 
     batch_size = target_volumes.shape[0]
@@ -43,60 +47,72 @@ def batch_optimized_inference(
     with torch.enable_grad():
         # Forward pass on trained model
         if target is not None:
-            bx_pred, _ = model.forward(target_volumes, latent_codes, target=target)
+            bx_pred, _ = model(target_volumes, latent_codes, target=target)
         else:
-            bx_pred, _ = model.forward(target_volumes, latent_codes)
+            bx_pred, _ = model(target_volumes, latent_codes)
         lwh_fixed = bx_pred[:, :, :3].clone()  # [seq_len, 3] numpy array
         xyz_init = bx_pred[:, :, 3:].clone()  # [seq_len, 3] numpy array
 
-        xyz_opt = xyz_init.clone().requires_grad_(True)
-        λ_overlap = 1.0
+        if method == "projector":
+            y = bx_pred.view(batch_size, -1).requires_grad_(True)
+            cfn = make_constraint_fn(target_volumes, seq_length)
+            for i in range(iterations):
+                y_new, c_pre, _, _ = lm_project_step(y, cfn)
+                if c_pre.abs().max() < 1e-8:
+                    break
+                y = y_new.requires_grad_(True)
+            boxes = y.detach().view(batch_size, seq_length, 6)
+            return boxes[:, :, 3:], boxes[:, :, :3]
 
-        assert xyz_init.shape == (batch_size, seq_length, 3), (
-            "xyz_init must be a tensor with shape (batch_size, seq_length, 3) but is "
-            + str(xyz_init.shape)
-        )
-        assert lwh_fixed.shape == (batch_size, seq_length, 3), (
-            "lwh_fixed must be a tensor with shape (batch_size, seq_length, 3) but is "
-            + str(lwh_fixed.shape)
-        )
+        else:
+            xyz_opt = xyz_init.clone().requires_grad_(True)
+            λ_overlap = 1.0
 
-        # iterate on xyz to find final compact + non-overlapping layout
-        for i in range(iterations):
-            # Assess layout quality
-            internals = BatchInternals(xyz_opt, lwh_fixed)
-            overlaps = internals.checkOverlap()
-            boundingbox_volume = internals.getRoughVolume()
-            frontal_area = internals.getRoughViewArea(view="frontal")
+            assert xyz_init.shape == (batch_size, seq_length, 3), (
+                "xyz_init must be a tensor with shape (batch_size, seq_length, 3) but is "
+                + str(xyz_init.shape)
+            )
+            assert lwh_fixed.shape == (batch_size, seq_length, 3), (
+                "lwh_fixed must be a tensor with shape (batch_size, seq_length, 3) but is "
+                + str(lwh_fixed.shape)
+            )
 
-            # Compute scalarized loss
-            box_volumes = internals.getBoxVolumes()  # [batch_size, max_boxes]
+            # iterate on xyz to find final compact + non-overlapping layout
+            for i in range(iterations):
+                # Assess layout quality
+                internals = BatchInternals(xyz_opt, lwh_fixed)
+                overlaps = internals.checkOverlap()
+                boundingbox_volume = internals.getRoughVolume()
+                frontal_area = internals.getRoughViewArea(view="frontal")
 
-            safe_overlap_norm = torch.sqrt((overlaps**2).sum(dim=1) + 1e-6)
-            overlap_loss = (
-                safe_overlap_norm.mean() / box_volumes.norm(p=2, dim=1).mean()
-            )  # overlap normalized by volumes of the boxes
+                # Compute scalarized loss
+                box_volumes = internals.getBoxVolumes()  # [batch_size, max_boxes]
 
-            if torch.all(overlap_loss < 1e-6):
-                break  # exit the loop ~ if no overlap
+                safe_overlap_norm = torch.sqrt((overlaps**2).sum(dim=1) + 1e-6)
+                overlap_loss = (
+                    safe_overlap_norm.mean() / box_volumes.norm(p=2, dim=1).mean()
+                )  # overlap normalized by volumes of the boxes
 
-            volume_loss = (
-                boundingbox_volume.pow(2).mean() / 100.0
-            )  # Scale down volume loss
-            area_loss = frontal_area.pow(2).mean() / 10.0  # Scale down area loss
+                if torch.all(overlap_loss < 1e-6):
+                    break  # exit the loop ~ if no overlap
 
-            loss = λ_overlap * overlap_loss + volume_loss + area_loss
+                volume_loss = (
+                    boundingbox_volume.pow(2).mean() / 100.0
+                )  # Scale down volume loss
+                area_loss = frontal_area.pow(2).mean() / 10.0  # Scale down area loss
 
-            grad = torch.autograd.grad(loss, xyz_opt, create_graph=True)[0]
+                loss = λ_overlap * overlap_loss + volume_loss + area_loss
 
-            # Clip gradients to prevent explosion
-            grad_norm = torch.norm(grad)
-            if grad_norm > max_grad_norm:
-                grad = grad * (max_grad_norm / grad_norm)
+                grad = torch.autograd.grad(loss, xyz_opt, create_graph=True)[0]
 
-            xyz_opt = xyz_opt - lr * grad
+                # Clip gradients to prevent explosion
+                grad_norm = torch.norm(grad)
+                if grad_norm > max_grad_norm:
+                    grad = grad * (max_grad_norm / grad_norm)
 
-            # Increase overlap penalty
-            λ_overlap *= 1.5
+                xyz_opt = xyz_opt - lr * grad
 
-        return xyz_opt, lwh_fixed
+                # Increase overlap penalty
+                λ_overlap *= 1.5
+
+            return xyz_opt, lwh_fixed

@@ -390,8 +390,10 @@ class BatchInternals:
             points, 1
         )  # weed out duplicate points along dim = 1 (in every batch element)
 
-        points_sorted_tuple = torch.sort(points, dim=1, stable=True)
-        points_sorted = points_sorted_tuple.values
+        order_y = points[..., 1].argsort(dim=1, stable=True)
+        sorted_by_y = points.gather(1, order_y.unsqueeze(-1).expand(-1, -1, 2))
+        order_x = sorted_by_y[..., 0].argsort(dim=1, stable=True)
+        points_sorted = sorted_by_y.gather(1, order_x.unsqueeze(-1).expand(-1, -1, 2))
 
         # Convex Hull Algorithm
         n_points = points_sorted.shape[1]
@@ -453,10 +455,13 @@ class BatchInternals:
         )  # [batch_size, max_nh, 2]
 
         # fill each batch‐row with its hull points
-        for b in range(self.batch_size):
-            nh = int(n_h[b].item())
-            inds = idx_sorted[b, :nh]
-            hull_tensor[b, :nh] = points_sorted[b, inds]
+        sorted_all = points_sorted.gather(1, idx_sorted.unsqueeze(-1).expand(-1, -1, 2))
+        hull_tensor = sorted_all[:, :max_nh]
+        valid_mask = (
+            torch.arange(max_nh, device=hull_tensor.device).unsqueeze(0)
+            < n_h.unsqueeze(1)
+        ).unsqueeze(-1)
+        hull_tensor = hull_tensor * valid_mask
 
         return hull_tensor, n_h  # shape: [batch_size, max_nh, 2], zeros are padding
 

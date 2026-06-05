@@ -20,7 +20,7 @@ def sample_target(
     batch_size,
     seq_len,
     density=0.3,
-    target_strength=0.8,
+    target_strength=0.3,
     axes=(0, 2),  # skip y by default (y=0 symmetry enforced by the model)
     device="cpu",
 ):
@@ -31,6 +31,9 @@ def sample_target(
     independently selected with probability `density`. Selected pairs get a
     random axis from `axes` and a random sign. The antisymmetric counterpart
     in the lower triangle is set automatically.
+
+    `density` may be a Python scalar or a 1-D tensor of shape [batch_size]
+    (per-example density). Per-example values are clamped to [0, 1].
 
     Returns: [batch_size, seq_len, seq_len, 3] tensor on `device`.
     """
@@ -43,14 +46,14 @@ def sample_target(
     i_idx, j_idx = torch.triu_indices(seq_len, seq_len, offset=1, device=device)
     n_pairs = i_idx.numel()
 
-    # Per-example, per-pair selection mask
+    # Per-example, per-pair selection mask. `density` is a scalar or [B] tensor.
+    if torch.is_tensor(density):
+        density = density.to(device).clamp(0.0, 1.0).view(batch_size, 1)
     active = torch.rand(batch_size, n_pairs, device=device) < density  # [B, P]
 
     # Random axis choice (index into `axes`) and random sign per pair
     axes_t = torch.tensor(axes, device=device)
-    axis_choice = axes_t[
-        torch.randint(0, len(axes), (batch_size, n_pairs), device=device)
-    ]
+    axis_choice = axes_t[torch.randint(0, len(axes), (batch_size, n_pairs), device=device)]
     sign = torch.where(
         torch.rand(batch_size, n_pairs, device=device) < 0.5,
         torch.full((batch_size, n_pairs), target_strength, device=device),
@@ -83,7 +86,7 @@ def constraint_loss(measured, target, eps=1e-6):
     """
     pair_mask = (target != 0).any(dim=-1, keepdim=True).float()  # [batch, N, N, 1]
     # Broadcast to all 3 axes
-    full_mask = pair_mask.expand_as(target)  # [batch, N, N, 3]
+    full_mask = pair_mask.expand_as(target)                       # [batch, N, N, 3]
 
     total = full_mask.sum()
     if total.item() == 0:

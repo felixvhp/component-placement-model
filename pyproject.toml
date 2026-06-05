@@ -77,6 +77,7 @@ select = [
 
 ignore = [
     "B008",  # do not perform function calls in argument defaults
+    "F401",
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
