@@ -1,7 +1,5 @@
 import torch
 
-from train import make_constraint_fn
-
 from .config import volume_limits
 from .geometry.internals import BatchInternals
 from .projector import lm_project_step, make_constraint_fn

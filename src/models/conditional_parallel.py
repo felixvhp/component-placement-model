@@ -9,6 +9,7 @@ from src.config import (
     width_limits,
 )
 from src.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
+from src.models.components import FourierEncoding
 from src.gnn_encoder import GNNConstraintEncoder
 
 D_MODEL = 256
@@ -42,19 +43,6 @@ class AuxiliaryPredictor(nn.Module):
         seq_len : [batch, 1]
         """
         return self.predictor(torch.cat([xyz, h, seq_len], dim=-1))
-
-
-class FourierEncoding(nn.Module):
-    def __init__(self, proj_dims, val=0.1):
-        super().__init__()
-        ll = proj_dims // 2
-        exb = 2 * torch.linspace(0, ll - 1, ll) / proj_dims
-        self.sigma = 2 * torch.pi / torch.pow(val, exb)
-
-    def forward(self, x):
-        sigma = self.sigma.to(x.device).view(1, -1)
-        return torch.cat([torch.sin(x * sigma), torch.cos(x * sigma)], dim=-1)
-
 
 
 class ConstraintEncoder(nn.Module):
