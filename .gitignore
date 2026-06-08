@@ -191,7 +191,6 @@ experiments/
 wandb/
 logs/
 results/
-results2/
 smoothness/
 plots/
 latex/
