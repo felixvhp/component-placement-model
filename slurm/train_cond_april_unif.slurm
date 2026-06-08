@@ -14,7 +14,7 @@
 #   - loops sl=1..max_sl/epoch (matches April 24 baseline)
 #   - density ~ U(0, 0.5) per example (vs. baseline's fixed 0.3)
 #   - target_strength = 0.8 (the bit that the May reproduction missed)
-# Submit with:  sbatch train_cond_april_unif.slurm
+# Submit with:  sbatch slurm/train_cond_april_unif.slurm
 
 SEED=$SLURM_ARRAY_TASK_ID
 MODEL=cond_parallel

@@ -16,7 +16,7 @@
 #   - density = 0.3 fixed
 #   - target_strength = 0.8
 #   - April compactness (slenderness + bbox_volume mix)
-# Submit with:  sbatch train_cond_april.slurm
+# Submit with:  sbatch slurm/train_cond_april.slurm
 
 SEED=$SLURM_ARRAY_TASK_ID
 MODEL=cond_parallel
