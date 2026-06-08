@@ -4,7 +4,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from matplotlib.widgets import Slider
+from matplotlib.widgets import RadioButtons, Slider, TextBox
 
 # Add parent directory to path for UAV imports
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,42 +15,73 @@ if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
 from src.config import latent_dim, volume_limits
+from src.constraints import sample_target
 from src.geometry.internals import Internals
 from src.inference import batch_optimized_inference
 from src.models.atiss import CTATISSBoxGenerator
 from src.models.baseline import AutoRegressiveBoxGenerator
 from src.models.causal_transformer import CausalTransformerBoxGenerator
+from src.models.conditional_parallel import ConditionalParallelBoxGenerator
+from src.models.parallel_transformer import ParallelBoxGenerator
 
 # Initialize model with same parameters as training
-# model = AutoRegressiveBoxGenerator()
-# model = CausalTransformerBoxGenerator()
-model = CTATISSBoxGenerator()
+MODEL_CONFIGS = {
+    "unconditional": {
+        # "cls": AutoRegressiveBoxGenerator,
+        # "path": os.path.join(
+        #    os.path.dirname(__file__), "experiments/mlp_projector_plain_s42.pth"
+        # ),
+        # "cls": CausalTransformerBoxGenerator,
+        # "path": os.path.join(os.path.dirname(__file__), "experiments/.../causal_transformer.pth"),
+        "cls": CTATISSBoxGenerator,
+        "path": os.path.join(
+            os.path.dirname(__file__), "experiments/ctatiss_projector_plain_s3.pth"
+        ),
+        # "cls": ParallelBoxGenerator,
+        # "path": os.path.join(
+        #   os.path.dirname(__file__),
+        #   "demo/parallel_projector_plain_s1.pth",
+        # ),
+    },
+    "conditional": {
+        "cls": ConditionalParallelBoxGenerator,
+        "path": os.path.join(
+            os.path.dirname(__file__),
+            "experiments/cond_parallel_projector_plain_s42_3.pth",
+        ),
+    },
+}
 
-model_path = os.path.join(
-    os.path.dirname(__file__), "experiments/ctatiss_v2_seqlen10.pth"
-)
-if os.path.exists(model_path):
-    model.load_state_dict(torch.load(model_path, map_location="cpu"))
-    print("Loaded pretrained model from", model_path)
-else:
-    print("Warning: Could not find pretrained model at", model_path)
-model.eval()  # Set to evaluation mode
+
+def load_model(mode):
+    cfg = MODEL_CONFIGS[mode]
+    m = cfg["cls"]()
+    if os.path.exists(cfg["path"]):
+        m.load_state_dict(torch.load(cfg["path"], map_location="cpu"))
+        print(f"Loaded {mode} model from {cfg['path']}")
+    else:
+        print(f"Warning: Could not find pretrained model at {cfg['path']}")
+    m.eval()
+    return m
+
+
+model = load_model("unconditional")
+conditional = False
 
 # Initial values
 n_boxes = 3
 volumes = torch.ones(1, n_boxes) * 0.05
 latent_z = torch.zeros(1, latent_dim)
+target_adjacency = torch.zeros(1, n_boxes, n_boxes, 3)
 
 # Create figure and subplots
 fig = plt.figure(figsize=(20, 10))
-volume_text = fig.text(0.02, 0.62, "", fontsize=10)
-overlap_text = fig.text(0.02, 0.6, "", fontsize=10)
+volume_text = fig.text(0.02, 0.42, "", fontsize=10)
+overlap_text = fig.text(0.02, 0.72, "", fontsize=10)
 overlap_matrix_text = fig.text(
-    0.02, 0.8, "", fontsize=10
+    0.02, 0.77, "", fontsize=10
 )  # New text element for overlap matrix
-adjacency_text = fig.text(
-    0.82, 0.05, "", fontsize=10
-)  # New text element for adjacency matrices
+adjacency_text = fig.text(0.8, 0.55, "", fontsize=7, va="top")
 
 # Create main 3D plot in the center
 ax3d = fig.add_axes((0.25, 0.1, 0.5, 0.8), projection="3d")
@@ -69,7 +100,7 @@ volume_x = 0.05
 volume_sliders = []
 for i in range(n_boxes):
     ax = plt.axes(
-        (volume_x, 0.55 - i * (slider_height + gap), slider_width, slider_height)
+        (volume_x, 0.4 - i * (slider_height + gap), slider_width, slider_height)
     )
     slider = Slider(
         ax, f"Vol {i + 1}", volume_limits[0], volume_limits[1], valinit=0.05
@@ -82,6 +113,19 @@ right_x = 0.8
 ax_n_boxes = plt.axes((right_x, 0.8, slider_width, slider_height))
 s_n_boxes = Slider(ax_n_boxes, "N Boxes", 1, 10, valinit=n_boxes, valstep=1)
 
+ax_mode = plt.axes((right_x, 0.86, slider_width, 0.08))
+mode_radio = RadioButtons(ax_mode, ("unconditional", "conditional"), active=0)
+
+
+def on_mode_changed(label):
+    global model, conditional
+    model = load_model(label)
+    conditional = label == "conditional"
+    update(None)
+
+
+mode_radio.on_clicked(on_mode_changed)
+
 # Latent sliders below n_boxes
 latent_sliders = []
 for i in range(latent_dim):
@@ -91,10 +135,53 @@ for i in range(latent_dim):
     slider = Slider(ax, f"z{i}", -3.0, 3.0, valinit=0.0)
     latent_sliders.append(slider)
 
+ax_constraint = plt.axes((0.12, 0.05, 0.4, 0.03))
+constraint_box = TextBox(ax_constraint, "Relational constraints:", initial="")
+
+
+def parse_constraints(text, n):
+    """
+    Parse strings like '0>2x, 1<3z' into a [1, n, n, 3] tensor.
+    '>' means +0.8 on the chosen axis, '<' means -0.8.
+    Axis char: x=0, z=2. (y skipped for 2D)
+    """
+    tgt = torch.zeros(1, n, n, 3)
+    for part in text.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            sep = ">" if ">" in part else "<"
+            sign = 0.8 if sep == ">" else -0.8
+            left, right = part.split(sep)
+            i = int(left.strip())
+            j = int(right[:-1].strip())
+            axis_char = right[-1].lower()
+            axis = {"x": 0, "z": 2}[axis_char]
+            if i < n and j < n and i != j:
+                tgt[0, i, j, axis] = sign
+                tgt[0, j, i, axis] = -sign
+        except Exception as e:
+            print(f"Skipping malformed constraint '{part}': {e}")
+    return tgt
+
+
+def on_constraints_changed(text):
+    global target_adjacency
+    target_adjacency = parse_constraints(text, n_boxes)
+    print(
+        f"Resulting target has {(target_adjacency != 0).sum().item()} nonzero entries"
+    )
+    update(None)
+
+
+constraint_box.on_submit(on_constraints_changed)
+
 
 def update(val):
     global n_boxes, volumes, latent_z, volume_sliders, latent_sliders
     ax3d.clear()
+    print(f"[DEBUG] target nonzero: {(target_adjacency != 0).sum().item()}")
     ax3d.set_proj_type("ortho")  # Set orthographic projection
 
     # Set plot appearance
@@ -107,6 +194,7 @@ def update(val):
     ax3d.set_ylabel("Y (m)", fontsize=12)
     ax3d.set_zlabel("Z (m)", fontsize=12)
     ax3d.set_proj_type("ortho")
+    # ax3d.view_init(elev=25, azim=-60)
 
     # Update volumes from sliders
     for i, slider in enumerate(volume_sliders[:n_boxes]):
@@ -125,9 +213,13 @@ def update(val):
         print(latent_z)
 
         print("\nGenerating box arrangement...")
-        bx_pred, _ = model.forward(volumes, latent_z)
+        if conditional:
+            bx_pred, _ = model.forward(volumes, latent_z, target=target_adjacency)
+        else:
+            bx_pred, _ = model.forward(volumes, latent_z)
         lwh = bx_pred[:, :, :3]
         xyz = bx_pred[:, :, 3:]
+        print(f"[DEBUG] xyz[0] = {xyz[0].cpu().numpy().round(3)}")
 
         print("\nOutput box dimensions (length, width, height):")
         print(lwh)
@@ -137,7 +229,11 @@ def update(val):
         # Run optimized inference
         print("\nRunning optimized inference...")
         xyz_opt_batch, lwh_opt_batch = batch_optimized_inference(
-            model, volumes, latent_z
+            model,
+            volumes,
+            latent_z,
+            target=target_adjacency if conditional else None,
+            method="projector",
         )
 
     # Create Internals objects and plot boxes
@@ -153,6 +249,21 @@ def update(val):
     internals.getBoxSurfaces(ax3d, np.array([0, 0, 0]), alpha=0.1)
     # Plot optimized boxes with higher alpha
     optimized_internals.getBoxSurfaces(ax3d, np.array([0, 0, 0]), alpha=1)
+
+    for i in range(n_boxes):
+        pos = xyz_opt_batch[0, i].detach().cpu().numpy()
+        ax3d.text(
+            pos[0],
+            pos[1],
+            pos[2],
+            str(i),
+            fontsize=14,
+            fontweight="bold",
+            color="black",
+            ha="center",
+            va="center",
+            zorder=1000,  # draw on top
+        )
 
     # Calculate metrics for both layouts
     orig_frontal_area = internals.getViewArea("frontal")
@@ -270,7 +381,7 @@ def update(val):
 
 
 def update_n_boxes(val):
-    global n_boxes, volumes, volume_sliders
+    global n_boxes, volumes, volume_sliders, target_adjacency
 
     # Clear old volume sliders
     for slider in volume_sliders:
@@ -283,6 +394,9 @@ def update_n_boxes(val):
         torch.ones(1, n_boxes) * 0.05
     )  # Changed to 2D tensor [batch_size, seq_len]
 
+    target_adjacency = torch.zeros(1, n_boxes, n_boxes, 3)  # NEW: reset
+    constraint_box.set_val("")
+
     # Calculate new positions
     slider_width = 0.15
     slider_height = 0.02
@@ -292,10 +406,10 @@ def update_n_boxes(val):
     # Recreate volume sliders on the left side
     for i in range(n_boxes):
         ax = plt.axes(
-            [volume_x, 0.55 - i * (slider_height + gap), slider_width, slider_height]
+            [volume_x, 0.4 - i * (slider_height + gap), slider_width, slider_height]
         )
         slider = Slider(
-            ax, f"Vol {i + 1}", volume_limits[0], volume_limits[1], valinit=0.7
+            ax, f"Vol {i + 1}", volume_limits[0], volume_limits[1], valinit=0.05
         )
         slider.on_changed(update)
         volume_sliders.append(slider)
