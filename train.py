@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 
@@ -6,302 +7,361 @@ import torch
 from tqdm import tqdm
 import wandb
 
-# Add parent directory to path for UAV imports
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
 from src.geometry.internals import BatchInternals
-from src.training_plots import plot_training_loss
-from src.constraints import sample_target, constraint_loss
-from src.models.conditional_parallel import ConditionalParallelBoxGenerator
-
-# Set random seeds for reproducibility (override via DIAG_SEED env var)
-_DIAG_SEED = int(os.environ.get("DIAG_SEED", "42"))
-torch.manual_seed(_DIAG_SEED)
-np.random.seed(_DIAG_SEED // 8 + 1 if _DIAG_SEED != 42 else 5)
-
-from src.config import (
-    batch_size,
-    epochs,
-    get_loss_weights,
-    latent_dim,
-    lr,
-    max_seq_length,
-    volume_limits,
-)
 from src.losses import (
-    DPP_AR_loss,
-    DPP_loss_adjacency,
+    DPP_AR_loss, DPP_loss_adjacency,
+    PA_DPP_AR_loss, PA_DPP_loss_adjacency,
     mi_loss,
 )
-from src.models.atiss import CTATISSBoxGenerator
-from src.models.causal_transformer import CausalTransformerBoxGenerator
-from src.models.baseline import AutoRegressiveBoxGenerator
-from src.models.parallel_transformer import ParallelBoxGenerator
-
-# Define device
-device = torch.device(
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
-
-DIAG_OUT = os.environ.get("DIAG_OUT", "experiments/debug/conditional_parallel_new13.pth")
-DIAG_RUN = os.environ.get("DIAG_RUN", None)
-DIAG_DENSITY = float(os.environ.get("DIAG_DENSITY", "0.3"))
-DIAG_DENSITY_MAX = float(os.environ.get("DIAG_DENSITY_MAX", str(DIAG_DENSITY)))  # if > DIAG_DENSITY, sample density per-step from U(DIAG_DENSITY, DIAG_DENSITY_MAX)
-DIAG_TGT_STRENGTH = float(os.environ.get("DIAG_TGT_STRENGTH", "0.3"))
-DIAG_ALPHA_CONFORM = float(os.environ.get("DIAG_ALPHA_CONFORM", "1.0"))  # only affects conform_loss adjacency, NOT ldv
-DIAG_LAMBDA_ADJ_SCALE = float(os.environ.get("DIAG_LAMBDA_ADJ_SCALE", "1.0"))  # multiplicative scaler on λ_adjacency from config
-
-wandb.init(
-    project="box-arrangement",
-    name=DIAG_RUN,
-    config={
-        "batch_size": batch_size,
-        "epochs": epochs,
-        "lr": lr,
-        "max_seq_length": max_seq_length,
-        "latent_dim": latent_dim,
-        "volume_limits": volume_limits,
-        "model": "ConditionalParallelBoxGenerator",
-        "device": str(device),
-        "out_path": DIAG_OUT,
-        "diag_density": DIAG_DENSITY,
-        "diag_density_max": DIAG_DENSITY_MAX,
-        "diag_seed": _DIAG_SEED,
-        "diag_target_strength": DIAG_TGT_STRENGTH,
-        "diag_alpha_conform": DIAG_ALPHA_CONFORM,
-        "diag_lambda_adj_scale": DIAG_LAMBDA_ADJ_SCALE,
-    }
-)
-
-assert volume_limits[0] > 0, (
-    "Volume limits must be greater than 0 to avoid numerical instability (division by 0 in volume loss calc)"
-)
+from src.config import volume_limits, latent_dim
 
 
-def train_internals():
+# ─────────────────────────────────────────────────────
+#  CLI
+# ─────────────────────────────────────────────────────
 
-    print("Training on device:", device)
-    # print("GPU:", torch.cuda.get_device_name(0))
+def parse_args():
+    p = argparse.ArgumentParser()
+    p.add_argument("--model", choices=["mlp", "ct", "ctatiss", "parallel", "cond_parallel", "cond_atiss"], default="ctatiss")
+    p.add_argument("--training", choices=["ramp", "projector"], default="ramp")
+    p.add_argument("--dpp", choices=["plain", "padpp"], default="plain")
+    p.add_argument("--epochs", type=int, default=2500)
+    p.add_argument("--lr", type=float, default=5e-4)
+    p.add_argument("--batch-size", type=int, default=256)
+    p.add_argument("--max-seq-length", type=int, default=10)
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--run-name", type=str, default="")
+    p.add_argument("--ablation", type=str, default="baseline",
+               choices=["baseline", "z_token", "z_both", "linear_vol", "no_vol_concat",
+                        "small", "large", "no_mi"])
+    p.add_argument("--cond-recipe", type=str, default="default",
+               choices=["default", "april_unif", "april"],
+               help="Conditional training recipe. "
+                    "'default' = single random sl/epoch, density=0.3, target_strength=0.3, "
+                    "simple side-area compactness. "
+                    "'april_unif' = loop sl=1..max_sl/epoch, per-example density U(0, 0.5), "
+                    "target_strength=0.8, simple side-area compactness. "
+                    "'april' = full April 24 baseline: loop sl=1..max_sl/epoch, density=0.3 fixed, "
+                    "target_strength=0.8, slenderness + bbox_volume compactness.")
+    return p.parse_args()
 
-    total_loss_history = []
-    volume_deficit_loss_history = []
-    overlap_loss_history = []
-    compactness_loss_history = []
-    ldv_loss_history = []
-    dpp_aspect_ratios_history = []
-    infonce_loss_history = []
-    loss_weights_history = []
 
-    model = ConditionalParallelBoxGenerator().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+# ─────────────────────────────────────────────────────
+#  Model factory
+# ─────────────────────────────────────────────────────
 
-    for epoch in tqdm(range(epochs), ncols=100):
+def make_model(name, device):
+    from src.models.baseline import AutoRegressiveBoxGenerator
+    from src.models.causal_transformer import CausalTransformerBoxGenerator
+    from src.models.atiss import CTATISSBoxGenerator
+    from src.models.parallel_transformer import ParallelBoxGenerator
+    from src.models.conditional_parallel import ConditionalParallelBoxGenerator
+    from src.models.conditional_atiss import ConditionalCTATISSBoxGenerator
+    return {
+        "mlp": AutoRegressiveBoxGenerator,
+        "ct": CausalTransformerBoxGenerator,
+        "ctatiss": CTATISSBoxGenerator,
+        "parallel": ParallelBoxGenerator,
+        "cond_parallel": ConditionalParallelBoxGenerator,
+        "cond_atiss": ConditionalCTATISSBoxGenerator,
+    }[name]().to(device)
+
+
+# ─────────────────────────────────────────────────────
+#  Constraint function for projector
+# ─────────────────────────────────────────────────────
+
+def make_constraint_fn(target_volumes, seq_len):
+    def cfn(y_flat):
+        B = y_flat.shape[0]
+        boxes = y_flat.view(B, seq_len, 6)
+        lwh, xyz = boxes[:, :, :3], boxes[:, :, 3:]
+
+        vol_residual = (lwh.prod(dim=-1) - target_volumes) / target_volumes
+        constraints = [vol_residual]
+
+        if seq_len > 1:
+            half = lwh / 2
+            ci, cj = xyz.unsqueeze(2), xyz.unsqueeze(1)
+            hi, hj = half.unsqueeze(2), half.unsqueeze(1)
+            ovl = torch.relu(hi + hj - (ci - cj).abs()).prod(dim=-1)
+            ovl = ovl * (1 - torch.eye(seq_len, device=y_flat.device).unsqueeze(0))
+            constraints.append((ovl.sum(dim=[1, 2]) / target_volumes.sum(dim=1)).unsqueeze(-1))
+
+        return torch.cat(constraints, dim=-1)
+    return cfn
+
+
+# ─────────────────────────────────────────────────────
+#  Loss computation (shared across all modes)
+# ─────────────────────────────────────────────────────
+
+def compute_losses(bx_pred, target_volumes, latent_codes, z_guess,
+                   seq_length, use_padpp, target_adj=None, compactness_kind="simple"):
+    device = bx_pred.device
+    lwh, xyz = bx_pred[:, :, :3], bx_pred[:, :, 3:]
+    internals = BatchInternals(xyz, lwh)
+    L = {}
+
+    # Constraints
+    overlap_matrices = internals.checkOverlap()
+    L["overlap"] = (overlap_matrices.norm(p=2, dim=1).mean(dim=1) / target_volumes.norm(p=2, dim=1)).mean()
+    L["volume"] = ((internals.getBoxVolumes() - target_volumes) / target_volumes).norm(p=2)
+
+    # Compactness
+    if compactness_kind == "april":
+        # April 24 baseline mix: slenderness + bbox-volume fill ratio
+        frontal_area = internals.getRoughViewArea(view="frontal")
+        side_view_area = internals.getRoughViewArea(view="side")
+        top_view_area = internals.getRoughViewArea(view="top")
+        bbox_volume = internals.getRoughVolume() / target_volumes.sum(dim=1)
+        slenderness = ((frontal_area / (0.5 * side_view_area + 0.5 * top_view_area)) ** 0.5).mean()
+        L["compactness"] = slenderness * 0.6 + 0.4 * bbox_volume.mean()
+    else:
+        norm = target_volumes.sum(dim=1) ** (2/3)
+        L["compactness"] = (internals.getRoughViewArea(view="side") / norm).mean()
+
+    # Quality for PA-DPP
+    q = None
+    if use_padpp:
+        bbox_vol = internals.getRoughVolume() / target_volumes.sum(dim=1)
+        q = 1.0 / bbox_vol.clamp(min=0.1)
+
+    # DPP
+    if seq_length > 1:
+        ar = torch.log(torch.stack([lwh[:, :, 1] / lwh[:, :, 0], lwh[:, :, 2] / lwh[:, :, 0]], dim=2))
+        Ax, _, Az = internals.getAdjacency()
+        L["dpp_ar"] = PA_DPP_AR_loss(ar, q) if q is not None else DPP_AR_loss(ar)
+        ldv_x = PA_DPP_loss_adjacency(Ax, q) if q is not None else DPP_loss_adjacency(Ax)
+        ldv_z = PA_DPP_loss_adjacency(Az, q) if q is not None else DPP_loss_adjacency(Az)
+        L["ldv"] = ldv_x + ldv_z
+    else:
+        L["dpp_ar"] = torch.tensor(0.0, device=device)
+        L["ldv"] = torch.tensor(0.0, device=device)
+
+    # MI
+    L["mi"] = mi_loss(latent_codes, z_guess)
+
+    # Adjacency conformity (conditional model only)
+    if target_adj is not None:
+        from src.constraints import constraint_loss
+        Ax, Ay, Az = internals.getAdjacency()
+        L["conform"] = constraint_loss(torch.stack([Ax, Ay, Az], dim=-1), target_adj)
+
+    return L
+
+
+# ─────────────────────────────────────────────────────
+#  Training
+# ─────────────────────────────────────────────────────
+def make_model_with_ablation(args, device):
+    """Build a Parallel model with the requested ablation."""
+    if args.model != "parallel":
+        raise ValueError("Ablations only supported for --model parallel")
+
+    from src.models.parallel_transformer import ParallelBoxGenerator
+
+    # Defaults
+    kwargs = dict(
+        d_model=256, n_layers=4,
+        z_conditioning="adaln", vol_encoding="fourier", vol_concat_head=True,
+    )
+
+    if args.ablation == "baseline":
+        pass
+    elif args.ablation == "z_token":
+        kwargs["z_conditioning"] = "token"
+    elif args.ablation == "z_both":
+        kwargs["z_conditioning"] = "both"
+    elif args.ablation == "linear_vol":
+        kwargs["vol_encoding"] = "linear"
+    elif args.ablation == "no_vol_concat":
+        kwargs["vol_concat_head"] = False
+    elif args.ablation == "small":
+        kwargs["d_model"] = 128
+        kwargs["n_layers"] = 2
+    elif args.ablation == "large":
+        kwargs["d_model"] = 512
+        kwargs["n_layers"] = 6
+    elif args.ablation == "no_mi":
+        pass  # handled in loss computation, not architecture
+    else:
+        raise ValueError(f"unknown ablation: {args.ablation}")
+
+    return ParallelBoxGenerator(**kwargs).to(device)
+
+def train(args):
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+
+    device = torch.device(
+        "cuda" if torch.cuda.is_available()
+        else "mps" if torch.backends.mps.is_available()
+        else "cpu"
+    )
+    print(f"Device: {device}")
+
+    if args.model == "parallel":
+        model = make_model_with_ablation(args, device)
+    else:
+        model = make_model(args.model, device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+
+    is_ar = args.model in ("mlp", "ct", "ctatiss")
+    is_cond = args.model in ("cond_parallel", "cond_atiss")
+    use_proj = args.training == "projector"
+    use_padpp = args.dpp == "padpp"
+    use_mi = args.ablation != "no_mi"
+
+
+
+    wandb.init(project="box-arrangement", name=args.run_name or None, config=vars(args))
+
+    # Mode-specific setup
+    if use_proj:
+        from src.projector import lm_project_step, gated_ema_update
+        from src.config import projector_config as pcfg, objective_weights as ow
+        lambda_c = torch.zeros(2, device=device)
+        lambda_d = torch.zeros(1, device=device)
+        grad_clip = pcfg["grad_clip"]
+    else:
+        from src.config import get_loss_weights
+        grad_clip = 1.0
+
+    for epoch in tqdm(range(args.epochs), ncols=100):
         optimizer.zero_grad()
+        z = torch.randn(args.batch_size, latent_dim, device=device)
 
-        # Generate random latent codes from N(0,1)
-        latent_codes = torch.randn(
-            batch_size, latent_dim
-        ).to(device)  # [batch_size, latent_dim]
+        loop_all_sl = is_ar or (is_cond and args.cond_recipe in ("april_unif", "april"))
+        seq_lengths = range(1, args.max_seq_length + 1) if loop_all_sl else \
+                      [torch.randint(1, args.max_seq_length + 1, (1,)).item()]
 
-        overlap_loss = 0
-        volume_deficit_loss = 0
-        compactness_loss = 0
-        ldv_loss = 0
-        dpp_aspect_ratios = 0
-        mi_loss_val = 0
-        conform_loss = 0
+        total_obj = torch.tensor(0.0, device=device)
+        total_con = torch.tensor(0.0, device=device)
+        total_disp = torch.tensor(0.0, device=device)
+        vol_posts, ovl_posts, disp_posts = [], [], []
 
-        for seq_length in range(1, max_seq_length + 1):
-            # Generate random volumes between volume_limits[0] and volume_limits[1]
-            w = max(0.2, (seq_length / max_seq_length) ** 2)
+        for sl in seq_lengths:
+            vols = (volume_limits[0] + torch.rand(args.batch_size, sl, device=device)
+                    * (volume_limits[1] - volume_limits[0]))
 
-            target_volumes = (
-                volume_limits[0] + torch.rand(batch_size, seq_length)
-                * (volume_limits[1] - volume_limits[0])
-            ).to(device)
-            target_volumes.requires_grad_(True)
-
-            _density = DIAG_DENSITY if DIAG_DENSITY_MAX == DIAG_DENSITY else float(np.random.uniform(DIAG_DENSITY, DIAG_DENSITY_MAX))
-            target_adjacency = sample_target(batch_size, seq_length, density=_density, target_strength=DIAG_TGT_STRENGTH, device=device)
-
-            # Forward pass
-            bx_pred, latent_code_guess = model(
-                target_volumes, latent_codes, target=target_adjacency
-            )  # [batch_size, seq_len, box_dim]
-
-            # instatiate internals class
-            lwh = bx_pred[:, :, :3]
-            xyz = bx_pred[:, :, 3:]
-
-            internals = BatchInternals(xyz, lwh)
-
-            # Compute overlap matrices and box volumes
-            overlap_matrices = internals.checkOverlap()
-            actual_volumes = internals.getBoxVolumes()  # [batch_size, max_boxes]
-
-            overlap_loss += (
-                overlap_matrices.norm(p=2, dim=1).mean(dim=1)
-                / target_volumes.norm(p=2, dim=1)
-            ).mean()  # overlap normalized by volumes of the boxes
-
-            volume_deficit_loss += (
-                (actual_volumes - target_volumes) / target_volumes
-            ).norm(p=2)
-
-            # Compute frontal area and volume --> incentivize compact layouts
-            frontal_area = internals.getRoughViewArea(view="frontal")
-            side_view_area = internals.getRoughViewArea(view="side")
-            top_view_area = internals.getRoughViewArea(view="top")
-
-            boundingbox_volume = internals.getRoughVolume() / target_volumes.sum(
-                dim=1
-            )  # inverse of fill ratio
-            slenderness = (
-                (frontal_area / (0.5 * side_view_area + 0.5 * top_view_area)) ** 0.5
-            ).mean()
-
-            compactness_loss += slenderness * 0.6 + 0.4 * boundingbox_volume.mean()
-            # compactness_loss += side_view_area.mean()
-
-            # Compute diversity loss in aspect ratios
-            if seq_length > 1:
-                aspect_ratios = torch.log(
-                    torch.stack(
-                        [lwh[:, :, 1] / lwh[:, :, 0], lwh[:, :, 2] / lwh[:, :, 0]],
-                        dim=2,
-                    )
-                )  #  w/l and h/l
-                dpp_aspect_ratios += DPP_AR_loss(
-                    aspect_ratios
-                )  # enable diverse box aspect ratios
-
-            # Compute layout diversity loss
-            Ax, Ay, Az = internals.getAdjacency()
-            if seq_length > 1:
-                # Ay skipped for now, since y = 0 enforced for all boxes for the time being
-                adjacent_diversity_x = DPP_loss_adjacency(Ax)
-                adjacent_diversity_z = DPP_loss_adjacency(Az)
-                ldv_loss += (adjacent_diversity_x + adjacent_diversity_z)
-
-            # Compute mutual information loss for latent code prediction
-            mi_loss_val += mi_loss(latent_codes, latent_code_guess)
-
-            if DIAG_ALPHA_CONFORM != 1.0:
-                # Recompute adjacency with custom alpha for conform_loss only
-                # (does NOT affect ldv_loss which still uses alpha=1.0 from getAdjacency).
-                _diff = internals.centers.unsqueeze(2) - internals.centers.unsqueeze(1)
-                _ss = torch.tanh(DIAG_ALPHA_CONFORM * _diff)
-                measured = _ss
+            # Forward
+            tgt_adj = None
+            if is_cond:
+                from src.constraints import sample_target
+                if args.cond_recipe == "april_unif":
+                    density = torch.rand(args.batch_size, device=device) * 0.5
+                    tgt_strength = 0.8
+                elif args.cond_recipe == "april":
+                    density = 0.3
+                    tgt_strength = 0.8
+                else:
+                    density = 0.3
+                    tgt_strength = 0.3
+                tgt_adj = sample_target(args.batch_size, sl, density=density,
+                                        target_strength=tgt_strength, device=device)
+                bx, zg = model(vols, z, target=tgt_adj)
             else:
-                measured = torch.stack([Ax, Ay, Az], dim=-1)
-            c_loss = constraint_loss(measured, target_adjacency)
-            conform_loss += c_loss
+                bx, zg = model(vols, z)
 
-        (
-            λ_overlap,
-            λ_volume,
-            λ_compactness,
-            λ_ldv,
-            λ_dpp_aspect_ratios,
-            λ_adj_vol_sensitivity,
-            λ_infonce,
-            λ_adjacency,
-        ) = get_loss_weights(epoch)
-        λ_adjacency = λ_adjacency * DIAG_LAMBDA_ADJ_SCALE
+            compactness_kind = "april" if (is_cond and args.cond_recipe == "april") else "simple"
+            L = compute_losses(bx, vols, z, zg, sl, use_padpp, tgt_adj,
+                               compactness_kind=compactness_kind)
 
-        # Total loss
-        total_loss = (
-            λ_overlap * overlap_loss
-            + λ_volume * volume_deficit_loss
-            + λ_compactness * compactness_loss
-            + λ_ldv * ldv_loss
-            + λ_dpp_aspect_ratios * dpp_aspect_ratios
-            + λ_infonce * mi_loss_val
-            + λ_adjacency * conform_loss
-        )
+            # ── Projector path ────────────────────────────
+            if use_proj:
+                try:
+                    y_hat = bx.view(args.batch_size, -1)
+                    _, c_pre, c_post, disp = lm_project_step(
+                        y_hat, make_constraint_fn(vols, sl),
+                        delta=pcfg["delta"], lam_min=pcfg["lam_min"])
 
-        total_loss_history.append(total_loss.item())
-        volume_deficit_loss_history.append(volume_deficit_loss.item())
-        overlap_loss_history.append(overlap_loss.item())
-        compactness_loss_history.append(compactness_loss.item())
-        ldv_loss_history.append(ldv_loss.item())
-        dpp_aspect_ratios_history.append(dpp_aspect_ratios.item())
-        infonce_loss_history.append(mi_loss_val.item())
-        loss_weights_history.append(
-            np.array(
-                [
-                    λ_overlap,
-                    λ_volume,
-                    λ_compactness,
-                    λ_ldv,
-                    λ_dpp_aspect_ratios,
-                    λ_infonce,
-                    λ_adjacency,
-                ]
-            )
-        )
+                    cr = c_pre.abs()
+                    total_con = total_con + (lambda_c[0].detach() * cr[:, :sl]).sum(-1).mean()
+                    if sl > 1:
+                        total_con = total_con + (lambda_c[1].detach() * cr[:, sl:]).sum(-1).mean()
 
-        wandb.log({
-            "total_loss": total_loss.item(),
-            "overlap_loss": overlap_loss.item(),
-            "volume_deficit_loss": volume_deficit_loss.item(),
-            "compactness_loss": compactness_loss.item(),
-            "ldv_loss": ldv_loss.item(),
-            "dpp_aspect_ratios": dpp_aspect_ratios.item(),
-            "infonce_loss": mi_loss_val.item(),
-            "conform_loss": conform_loss.item(),
-        }, step=epoch)
+                    dm = disp.pow(2).sum(-1).add(1e-12).sqrt()
+                    total_disp = total_disp + (lambda_d.detach() * dm).mean()
 
+                    with torch.no_grad():
+                        cp = c_post.abs()
+                        vol_posts.append(cp[:, :sl].mean())
+                        if sl > 1: ovl_posts.append(cp[:, sl:].mean())
+                        disp_posts.append(dm.detach().mean())
+                except Exception as e:
+                    tqdm.write(f"Projector failed sl={sl}: {e}")
+
+                total_obj = total_obj + (
+                    ow["compactness"] * L["compactness"]
+                    + ow["dpp_aspect_ratios"] * L["dpp_ar"]
+                    + ow["ldv"] * L["ldv"]
+                    + (ow["infonce"] * L["mi"] if use_mi else 0.0)
+                    + ow.get("conform", 30.0) * L.get("conform", 0.0)
+                )
+
+            # ── Ramp path ─────────────────────────────────
+            else:
+                wts = get_loss_weights(epoch)
+                λo, λv, λc, λl, λa, _, λm = wts[:7]
+                λcf = wts[7] if len(wts) > 7 else 0.0
+                total_obj = total_obj + (
+                    λo * L["overlap"] + λv * L["volume"]
+                    + λc * L["compactness"] + λl * L["ldv"]
+                    + λa * L["dpp_ar"]
+                    + (λm * L["mi"] if use_mi else 0.0)
+                    + λcf * L.get("conform", 0.0)
+                )
+
+        # ── Step ──────────────────────────────────────────
+        total_loss = total_obj + total_con + total_disp
         if torch.isnan(total_loss):
-            print(f"NaN total_loss at epoch {epoch}", flush=True)
-            break
+            tqdm.write(f"NaN at epoch {epoch}"); break
 
-        # Backpropagation
         total_loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-
-
-        nan_grad = False
-        for name, p in model.named_parameters():
-            if p.grad is not None and torch.isnan(p.grad).any():
-                print(f"NaN gradient in {name} at epoch {epoch}", flush=True)
-                nan_grad = True
-                break
-        if nan_grad:
-            break
-
-
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip)
         optimizer.step()
 
+        # ── Projector EMA ─────────────────────────────────
+        if use_proj and vol_posts:
+            with torch.no_grad():
+                lambda_c[0] = gated_ema_update(lambda_c[0], torch.stack(vol_posts).mean(),
+                                               pcfg["feas_tol"], pcfg["ema_max_decades"], pcfg["ema_rate"])
+                if ovl_posts:
+                    lambda_c[1] = gated_ema_update(lambda_c[1], torch.stack(ovl_posts).mean(),
+                                                   pcfg["feas_tol"], pcfg["ema_max_decades"], pcfg["ema_rate"])
+                if disp_posts:
+                    lambda_d[0] = gated_ema_update(lambda_d[0], torch.stack(disp_posts).mean(),
+                                                   pcfg["disp_tol"], pcfg["ema_max_decades"], pcfg["ema_rate"])
+
+        # ── Log ───────────────────────────────────────────
+        ld = {"total_loss": total_loss.item()}
+        if use_proj:
+            ld.update({"con_loss": total_con.item(), "disp_loss": total_disp.item(),
+                       "lam_c_vol": lambda_c[0].item(), "lam_c_ovl": lambda_c[1].item(),
+                       "lam_d": lambda_d[0].item()})
+        wandb.log(ld, step=epoch)
+
         if (epoch + 1) % 100 == 0:
-            plot_training_loss(
-                total_loss_history,
-                overlap_loss_history,
-                volume_deficit_loss_history,
-                compactness_loss_history,
-                ldv_loss_history,
-                dpp_aspect_ratios_history,
-                infonce_loss_history,
-                loss_weights_history,
-            )
+            tqdm.write(f"[{epoch+1}] loss={total_loss.item():.3f}")
 
-    # Save the model
-    out_path = DIAG_OUT
-    if not os.path.isabs(out_path):
-        out_path = os.path.join(os.path.dirname(__file__), out_path)
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    torch.save(model.state_dict(), out_path)
-    print(f"Saved checkpoint to {out_path}", flush=True)
-
+    # ── Save ──────────────────────────────────────────────
+    suffix = f"_{args.ablation}" if args.ablation != "baseline" else ""
+    if is_cond and args.cond_recipe != "default":
+        suffix = f"{suffix}_{args.cond_recipe}"
+    name = f"{args.model}_{args.training}_{args.dpp}{suffix}_s{args.seed}.pth"
+    path = os.path.join(os.path.dirname(__file__), "experiments", name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    torch.save(model.state_dict(), path)
+    print(f"Saved: {path}")
     wandb.finish()
 
 
 if __name__ == "__main__":
-    train_internals()
+    train(parse_args())
