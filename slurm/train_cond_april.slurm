@@ -29,7 +29,7 @@ cd ~/projects/component-placement-model
 
 # ─── Train ──────────────────────────────────────────
 echo "=== Training: model=$MODEL seed=$SEED recipe=$RECIPE ==="
-python -u train2.py \
+python -u train.py \
     --model $MODEL \
     --training $TRAINING \
     --dpp plain \

@@ -24,7 +24,7 @@ rm -f results2/uncond/ctatiss_sl3_s7/results_ctatiss_sl3_cleanup-*.json
 rm -f results2/uncond/ctatiss_sl10_s7/results_ctatiss_sl10_cleanup-*.json
 
 echo "=== Training: $MODEL seed=$SEED training=$TRAINING ==="
-python -u train2.py \
+python -u train.py \
     --model $MODEL \
     --training $TRAINING \
     --dpp plain \

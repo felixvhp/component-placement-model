@@ -42,7 +42,7 @@ fi
 
 # ─── Train ──────────────────────────────────────────
 echo "=== Training: model=$MODEL seed=$SEED training=$TRAINING ==="
-python -u train2.py \
+python -u train.py \
     --model $MODEL \
     --training $TRAINING \
     --dpp plain \

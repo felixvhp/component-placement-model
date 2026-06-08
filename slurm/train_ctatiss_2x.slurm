@@ -21,7 +21,7 @@ source ~/venv/component-placement/bin/activate
 cd ~/projects/component-placement-model
 
 echo "=== Training: $MODEL seed=$SEED training=$TRAINING ldv=2x infonce=2x ==="
-python -u train2.py \
+python -u train.py \
     --model $MODEL \
     --training $TRAINING \
     --dpp plain \

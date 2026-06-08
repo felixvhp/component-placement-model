@@ -19,7 +19,7 @@ source ~/venv/component-placement/bin/activate
 cd ~/projects/component-placement-model
 
 echo "=== Training: mlp ramp seed=$SEED ==="
-python -u train2.py \
+python -u train.py \
     --model mlp \
     --training ramp \
     --dpp plain \

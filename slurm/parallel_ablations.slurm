@@ -28,7 +28,7 @@ source ~/venv/component-placement/bin/activate
 cd ~/projects/component-placement-model
 
 echo "=== Training: parallel ablation=$ABLATION seed=$SEED ==="
-python -u train2.py \
+python -u train.py \
     --model parallel \
     --training projector \
     --dpp plain \

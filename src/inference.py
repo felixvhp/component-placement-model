@@ -1,6 +1,6 @@
 import torch
 
-from train2 import make_constraint_fn
+from train import make_constraint_fn
 
 from .config import volume_limits
 from .geometry.internals import BatchInternals
