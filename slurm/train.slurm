@@ -9,13 +9,13 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=your_email@ethz.ch
 
-# 50 jobs total:
+# 40 jobs total:
 # 0-29:  unconditional (mlp, ctatiss, parallel × 10 seeds), projector
-# 30-49: conditional (cond_parallel, cond_atiss × 10 seeds), ramp
+# 30-39: conditional (cond_parallel × 10 seeds), ramp
 
 SEEDS=(0 1 2 3 4 5 6 7 8 9)
 UNCOND_MODELS=(mlp ctatiss parallel)
-COND_MODELS=(cond_parallel cond_atiss)
+COND_MODELS=(cond_parallel)
 
 IDX=$SLURM_ARRAY_TASK_ID
 

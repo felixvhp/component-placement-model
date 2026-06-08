@@ -15,7 +15,6 @@ from src.models.atiss import CTATISSBoxGenerator
 from src.models.baseline import AutoRegressiveBoxGenerator
 from src.models.conditional_parallel import ConditionalParallelBoxGenerator
 from src.models.parallel_transformer import ParallelBoxGenerator
-from src.models.conditional_atiss import ConditionalCTATISSBoxGenerator
 
 device = torch.device(
     "cuda"
@@ -31,7 +30,6 @@ MODEL_CLASSES = {
     "mlp": AutoRegressiveBoxGenerator,
     "parallel": ParallelBoxGenerator,
     "cond_parallel": ConditionalParallelBoxGenerator,
-    "cond_atiss": ConditionalCTATISSBoxGenerator,
 }
 
 

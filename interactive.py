@@ -20,7 +20,6 @@ from src.geometry.internals import Internals
 from src.inference import batch_optimized_inference
 from src.models.atiss import CTATISSBoxGenerator
 from src.models.baseline import AutoRegressiveBoxGenerator
-from src.models.causal_transformer import CausalTransformerBoxGenerator
 from src.models.conditional_parallel import ConditionalParallelBoxGenerator
 from src.models.parallel_transformer import ParallelBoxGenerator
 
@@ -31,8 +30,6 @@ MODEL_CONFIGS = {
         # "path": os.path.join(
         #    os.path.dirname(__file__), "experiments/mlp_projector_plain_s42.pth"
         # ),
-        # "cls": CausalTransformerBoxGenerator,
-        # "path": os.path.join(os.path.dirname(__file__), "experiments/.../causal_transformer.pth"),
         "cls": CTATISSBoxGenerator,
         "path": os.path.join(
             os.path.dirname(__file__), "experiments/ctatiss_projector_plain_s3.pth"

@@ -27,7 +27,7 @@ from src.config import volume_limits, latent_dim
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--model", choices=["mlp", "ct", "ctatiss", "parallel", "cond_parallel", "cond_atiss"], default="ctatiss")
+    p.add_argument("--model", choices=["mlp", "ctatiss", "parallel", "cond_parallel"], default="ctatiss")
     p.add_argument("--training", choices=["ramp", "projector"], default="ramp")
     p.add_argument("--dpp", choices=["plain", "padpp"], default="plain")
     p.add_argument("--epochs", type=int, default=2500)
@@ -57,18 +57,14 @@ def parse_args():
 
 def make_model(name, device):
     from src.models.baseline import AutoRegressiveBoxGenerator
-    from src.models.causal_transformer import CausalTransformerBoxGenerator
     from src.models.atiss import CTATISSBoxGenerator
     from src.models.parallel_transformer import ParallelBoxGenerator
     from src.models.conditional_parallel import ConditionalParallelBoxGenerator
-    from src.models.conditional_atiss import ConditionalCTATISSBoxGenerator
     return {
         "mlp": AutoRegressiveBoxGenerator,
-        "ct": CausalTransformerBoxGenerator,
         "ctatiss": CTATISSBoxGenerator,
         "parallel": ParallelBoxGenerator,
         "cond_parallel": ConditionalParallelBoxGenerator,
-        "cond_atiss": ConditionalCTATISSBoxGenerator,
     }[name]().to(device)
 
 
@@ -213,8 +209,8 @@ def train(args):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    is_ar = args.model in ("mlp", "ct", "ctatiss")
-    is_cond = args.model in ("cond_parallel", "cond_atiss")
+    is_ar = args.model in ("mlp", "ctatiss")
+    is_cond = args.model in ("cond_parallel",)
     use_proj = args.training == "projector"
     use_padpp = args.dpp == "padpp"
     use_mi = args.ablation != "no_mi"
