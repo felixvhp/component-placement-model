@@ -9,7 +9,7 @@ from src.config import (
     width_limits,
 )
 from src.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
-from src.models.components import FourierEncoding
+from src.models.components import AuxiliaryPredictor, FourierEncoding
 from src.gnn_encoder import GNNConstraintEncoder
 
 D_MODEL = 256
@@ -18,31 +18,6 @@ N_LAYERS = 4
 DIM_FF = 512
 DROPOUT = 0.0
 MAX_SEQ_LEN = 25
-
-_AUX_IN = 3 + D_MODEL + 1
-
-
-class AuxiliaryPredictor(nn.Module):
-    def __init__(self, device=None):
-        super().__init__()
-        self.device = device or torch.device("cpu")
-        self.predictor = nn.Sequential(
-            nn.Linear(_AUX_IN, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, 128),
-            nn.LeakyReLU(),
-            nn.Linear(128, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, latent_dim),
-        )
-
-    def forward(self, xyz, h, seq_len):
-        """
-        xyz     : [batch, 3]
-        h       : [batch, D_MODEL]
-        seq_len : [batch, 1]
-        """
-        return self.predictor(torch.cat([xyz, h, seq_len], dim=-1))
 
 
 class ConstraintEncoder(nn.Module):
@@ -141,7 +116,7 @@ class ConditionalParallelBoxGenerator(nn.Module):
         self.query_embed = nn.Embedding(MAX_SEQ_LEN, D_MODEL)
 
         # ── Auxiliary z predictor (for MI loss) ───────────────
-        self.auxiliary_predictor = AuxiliaryPredictor(device=self.device)
+        self.auxiliary_predictor = AuxiliaryPredictor(D_MODEL, device=self.device)
 
     @staticmethod
     def _scale_box(raw: torch.Tensor) -> torch.Tensor:

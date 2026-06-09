@@ -9,7 +9,7 @@ from src.config import (
     width_limits,
 )
 from src.models.dit_block import BoxDiTBlock, zero_init_adaln
-from src.models.components import FourierEncoding
+from src.models.components import AuxiliaryPredictor, FourierEncoding
 
 volume_limits = [0.005, 0.1]
 
@@ -19,32 +19,6 @@ N_LAYERS = 4
 DIM_FF = 512
 DROPOUT = 0.0
 MAX_SEQ_LEN = 25
-
-_AUX_IN = 3 + D_MODEL + 1
-
-
-class AuxiliaryPredictor(nn.Module):
-    def __init__(self, device=None):
-        super().__init__()
-        self.device = device or torch.device("cpu")
-        self.predictor = nn.Sequential(
-            nn.Linear(_AUX_IN, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, 128),
-            nn.LeakyReLU(),
-            nn.Linear(128, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, latent_dim),
-        )
-
-    def forward(self, xyz, h_last, seq_len):
-        """
-        xyz     : [batch, 3]
-        h_last  : [batch, D_MODEL]
-        seq_len : [batch, 1]
-        """
-        feed = torch.cat([xyz, h_last, seq_len], dim=-1)
-        return self.predictor(feed)
 
 
 class CTATISSBoxGenerator(nn.Module):
@@ -92,7 +66,7 @@ class CTATISSBoxGenerator(nn.Module):
             nn.Linear(D_MODEL, box_dim),
         )
 
-        self.auxiliary_predictor = AuxiliaryPredictor(device=self.device)
+        self.auxiliary_predictor = AuxiliaryPredictor(D_MODEL, device=self.device)
 
     def _pos(self, idx: int, device) -> torch.Tensor:
         """Return the positional embedding vector for position `idx`."""

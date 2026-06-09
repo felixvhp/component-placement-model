@@ -9,7 +9,7 @@ from src.config import (
     width_limits,
 )
 from src.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
-from src.models.components import FourierEncoding
+from src.models.components import AuxiliaryPredictor, FourierEncoding
 
 # Defaults (used when no args passed)
 DEFAULT_D_MODEL = 256
@@ -18,25 +18,6 @@ DEFAULT_N_LAYERS = 4
 DEFAULT_DIM_FF = 512
 DEFAULT_DROPOUT = 0.0
 MAX_SEQ_LEN = 25
-
-
-class AuxiliaryPredictor(nn.Module):
-    def __init__(self, d_model, device=None):
-        super().__init__()
-        self.device = device or torch.device("cpu")
-        aux_in = 3 + d_model + 1
-        self.predictor = nn.Sequential(
-            nn.Linear(aux_in, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, 128),
-            nn.LeakyReLU(),
-            nn.Linear(128, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, latent_dim),
-        )
-
-    def forward(self, xyz, h, seq_len):
-        return self.predictor(torch.cat([xyz, h, seq_len], dim=-1))
 
 
 class ParallelBoxGenerator(nn.Module):

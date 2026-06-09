@@ -9,31 +9,11 @@ from src.config import (
     requirement_dim,
     width_limits,
 )
+from src.models.components import AuxiliaryPredictor
 
 embedding_dim = 1024  # Embedded previously generated boxes
 
 MAIN_INPUT_DIM = latent_dim + requirement_dim + embedding_dim + 1
-AUX_INPUT_DIM = 3 + embedding_dim + 1  # xyz, seq_len, i
-
-
-class AuxiliaryPredictor(nn.Module):
-    def __init__(self, device=None):
-        super().__init__()
-        self.device = device if device is not None else torch.device("cpu")
-
-        self.predictor = nn.Sequential(
-            nn.Linear(AUX_INPUT_DIM, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, 128),
-            nn.LeakyReLU(),
-            nn.Linear(128, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64, latent_dim),
-        )
-
-    def forward(self, x, emb, seq_len):
-        feed = torch.cat([x, emb, seq_len], dim=-1)
-        return self.predictor(feed)
 
 
 # -------------------------------------------------
@@ -71,7 +51,7 @@ class AutoRegressiveBoxGenerator(nn.Module):
         )
 
         self.auxiliary_predictor = AuxiliaryPredictor(
-            device=self.device
+            embedding_dim, device=self.device
         )  # so we can initialize a single model
 
     def forward(self, volume, latent_z):

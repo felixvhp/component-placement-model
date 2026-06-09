@@ -19,6 +19,7 @@ from src.losses import (
     mi_loss,
 )
 from src.config import volume_limits, latent_dim
+from src.projector import make_constraint_fn
 
 
 # ─────────────────────────────────────────────────────
@@ -66,31 +67,6 @@ def make_model(name, device):
         "parallel": ParallelBoxGenerator,
         "cond_parallel": ConditionalParallelBoxGenerator,
     }[name]().to(device)
-
-
-# ─────────────────────────────────────────────────────
-#  Constraint function for projector
-# ─────────────────────────────────────────────────────
-
-def make_constraint_fn(target_volumes, seq_len):
-    def cfn(y_flat):
-        B = y_flat.shape[0]
-        boxes = y_flat.view(B, seq_len, 6)
-        lwh, xyz = boxes[:, :, :3], boxes[:, :, 3:]
-
-        vol_residual = (lwh.prod(dim=-1) - target_volumes) / target_volumes
-        constraints = [vol_residual]
-
-        if seq_len > 1:
-            half = lwh / 2
-            ci, cj = xyz.unsqueeze(2), xyz.unsqueeze(1)
-            hi, hj = half.unsqueeze(2), half.unsqueeze(1)
-            ovl = torch.relu(hi + hj - (ci - cj).abs()).prod(dim=-1)
-            ovl = ovl * (1 - torch.eye(seq_len, device=y_flat.device).unsqueeze(0))
-            constraints.append((ovl.sum(dim=[1, 2]) / target_volumes.sum(dim=1)).unsqueeze(-1))
-
-        return torch.cat(constraints, dim=-1)
-    return cfn
 
 
 # ─────────────────────────────────────────────────────
