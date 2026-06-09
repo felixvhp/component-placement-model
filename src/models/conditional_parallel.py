@@ -10,7 +10,6 @@ from src.config import (
 )
 from src.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
 from src.models.components import AuxiliaryPredictor, FourierEncoding
-from src.models.gnn_encoder import GNNConstraintEncoder
 
 D_MODEL = 256
 N_HEAD = 8
@@ -71,14 +70,6 @@ class ConditionalParallelBoxGenerator(nn.Module):
         )
 
         self.constraint_encoder = ConstraintEncoder(max_n=MAX_SEQ_LEN, d_model=D_MODEL)
-
-        # self.constraint_encoder = GNNConstraintEncoder(
-        #    max_n=MAX_SEQ_LEN,
-        #   d_model=D_MODEL,
-        #   node_dim=64,
-        #   hidden_dim=128,
-        #   n_layers=3,
-        # )
 
         # context and query tokens
         self.sl_proj = nn.Linear(1, D_MODEL)  # seq_len token

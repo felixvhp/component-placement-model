@@ -40,7 +40,6 @@ component-placement-model/
 │       ├── parallel_transformer.py# Parallel decoder             (parallel)
 │       ├── conditional_parallel.py# Constraint-conditioned parallel (cond_parallel)
 │       ├── dit_block.py           # DiT adaLN-Zero transformer blocks
-│       ├── gnn_encoder.py         # GNN constraint encoder
 │       └── components.py          # Shared building blocks (FourierEncoding, AuxiliaryPredictor)
 ├── slurm/                         # SLURM job scripts (training, ablations, benchmarks)
 ├── tests/
