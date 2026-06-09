@@ -19,7 +19,7 @@ from src.losses import (
     mi_loss,
 )
 from src.config import volume_limits, latent_dim
-from src.projector import make_constraint_fn
+from src.constraints import make_constraint_fn
 
 
 # ─────────────────────────────────────────────────────
@@ -197,7 +197,7 @@ def train(args):
 
     # Mode-specific setup
     if use_proj:
-        from src.projector import lm_project_step, gated_ema_update
+        from src.constraints import lm_project_step, gated_ema_update
         from src.config import projector_config as pcfg, objective_weights as ow
         lambda_c = torch.zeros(2, device=device)
         lambda_d = torch.zeros(1, device=device)

@@ -10,7 +10,7 @@ from src.config import (
 )
 from src.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
 from src.models.components import AuxiliaryPredictor, FourierEncoding
-from src.gnn_encoder import GNNConstraintEncoder
+from src.models.gnn_encoder import GNNConstraintEncoder
 
 D_MODEL = 256
 N_HEAD = 8

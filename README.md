@@ -28,12 +28,11 @@ component-placement-model/
 ├── bootstrap_env.py               # Conda environment setup
 ├── src/
 │   ├── config.py                  # Shared constants (box dims, latent dim, volume limits)
-│   ├── constraints.py             # Constraint sampling & satisfaction metrics
 │   ├── inference.py               # Constraint-aware optimized inference
-│   ├── projector.py               # Levenberg–Marquardt constraint projection
-│   ├── losses.py                  # DPP / mutual-information diversity losses
-│   ├── gnn_encoder.py             # GNN constraint encoder
-│   ├── training_plots.py          # Training visualization helpers
+│   ├── losses.py                  # DPP / mutual-information diversity losses (train + eval)
+│   ├── constraints/               # Constraint domain
+│   │   ├── sampling.py            #   target sampling & satisfaction metrics
+│   │   └── projection.py          #   Levenberg–Marquardt constraint projection
 │   ├── geometry/                  # Differentiable box geometry & internals
 │   └── models/
 │       ├── baseline.py            # Autoregressive MLP            (mlp)
@@ -41,7 +40,8 @@ component-placement-model/
 │       ├── parallel_transformer.py# Parallel decoder             (parallel)
 │       ├── conditional_parallel.py# Constraint-conditioned parallel (cond_parallel)
 │       ├── dit_block.py           # DiT adaLN-Zero transformer blocks
-│       └── components.py          # Shared building blocks (FourierEncoding)
+│       ├── gnn_encoder.py         # GNN constraint encoder
+│       └── components.py          # Shared building blocks (FourierEncoding, AuxiliaryPredictor)
 ├── slurm/                         # SLURM job scripts (training, ablations, benchmarks)
 ├── tests/
 └── latex/                         # Report sources

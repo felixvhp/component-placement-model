@@ -2,7 +2,7 @@ import torch
 
 from .config import volume_limits
 from .geometry.internals import BatchInternals
-from .projector import lm_project_step, make_constraint_fn
+from .constraints import lm_project_step, make_constraint_fn
 
 # -------------------------------------------------------------
 #  Pytorch "unrolled" gradient descent
