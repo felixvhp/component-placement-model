@@ -53,7 +53,9 @@ def sample_target(
 
     # Random axis choice (index into `axes`) and random sign per pair
     axes_t = torch.tensor(axes, device=device)
-    axis_choice = axes_t[torch.randint(0, len(axes), (batch_size, n_pairs), device=device)]
+    axis_choice = axes_t[
+        torch.randint(0, len(axes), (batch_size, n_pairs), device=device)
+    ]
     sign = torch.where(
         torch.rand(batch_size, n_pairs, device=device) < 0.5,
         torch.full((batch_size, n_pairs), target_strength, device=device),
@@ -86,7 +88,7 @@ def constraint_loss(measured, target, eps=1e-6):
     """
     pair_mask = (target != 0).any(dim=-1, keepdim=True).float()  # [batch, N, N, 1]
     # Broadcast to all 3 axes
-    full_mask = pair_mask.expand_as(target)                       # [batch, N, N, 3]
+    full_mask = pair_mask.expand_as(target)  # [batch, N, N, 3]
 
     total = full_mask.sum()
     if total.item() == 0:

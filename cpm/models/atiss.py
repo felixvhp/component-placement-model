@@ -8,8 +8,8 @@ from cpm.config import (
     length_limits,
     width_limits,
 )
-from cpm.models.dit_block import BoxDiTBlock, zero_init_adaln
 from cpm.models.components import AuxiliaryPredictor, FourierEncoding
+from cpm.models.dit_block import BoxDiTBlock, zero_init_adaln
 
 volume_limits = [0.005, 0.1]
 

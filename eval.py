@@ -10,7 +10,12 @@ from cpm.config import latent_dim, volume_limits
 from cpm.constraints import sample_target, satisfaction_rate
 from cpm.geometry.internals import BatchInternals
 from cpm.inference import batch_optimized_inference
-from cpm.losses import DPP_AR_loss, DPP_loss_adjacency, DPP_loss_adjacency_normalized, mi_loss
+from cpm.losses import (
+    DPP_AR_loss,
+    DPP_loss_adjacency,
+    DPP_loss_adjacency_normalized,
+    mi_loss,
+)
 from cpm.models.atiss import CTATISSBoxGenerator
 from cpm.models.baseline import AutoRegressiveBoxGenerator
 from cpm.models.conditional_parallel import ConditionalParallelBoxGenerator
@@ -36,7 +41,9 @@ MODEL_CLASSES = {
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate box arrangement model")
     parser.add_argument("--weights", type=str, required=True)
-    parser.add_argument("--model", type=str, required=True, choices=MODEL_CLASSES.keys())
+    parser.add_argument(
+        "--model", type=str, required=True, choices=MODEL_CLASSES.keys()
+    )
     parser.add_argument("--seq_len", type=int, default=10)
     parser.add_argument("--n", type=int, default=100)
     parser.add_argument("--num_seeds", type=int, default=10)
@@ -46,12 +53,27 @@ def parse_args():
     parser.add_argument("--skip_smoothness", action="store_true")
     parser.add_argument("--skip_density_sweep", action="store_true")
     parser.add_argument("--plot_name", type=str, default="")
-    parser.add_argument("--ablation", type=str, default="baseline",
-                    choices=["baseline", "z_token", "z_both", "linear_vol", "no_vol_concat",
-                             "small", "large", "no_mi"])
-    parser.add_argument("--ldv-raw", action="store_true",
-                    help="Use DPP_loss_adjacency (non-normalized) instead of the default "
-                         "DPP_loss_adjacency_normalized for the ldv metric.")
+    parser.add_argument(
+        "--ablation",
+        type=str,
+        default="baseline",
+        choices=[
+            "baseline",
+            "z_token",
+            "z_both",
+            "linear_vol",
+            "no_vol_concat",
+            "small",
+            "large",
+            "no_mi",
+        ],
+    )
+    parser.add_argument(
+        "--ldv-raw",
+        action="store_true",
+        help="Use DPP_loss_adjacency (non-normalized) instead of the default "
+        "DPP_loss_adjacency_normalized for the ldv metric.",
+    )
     return parser.parse_args()
 
 
@@ -61,7 +83,16 @@ def sample_volumes(n, seq_len):
     )
 
 
-def evaluate_seed(model, seed, N, seq_len, cleanup="off", conditional=False, density=0.3, ldv_raw=False):
+def evaluate_seed(
+    model,
+    seed,
+    N,
+    seq_len,
+    cleanup="off",
+    conditional=False,
+    density=0.3,
+    ldv_raw=False,
+):
     torch.manual_seed(seed)
 
     z_samples = torch.randn(N, latent_dim, device=device)
@@ -83,7 +114,9 @@ def evaluate_seed(model, seed, N, seq_len, cleanup="off", conditional=False, den
     # Optionally apply inference-time cleanup (unrolled GD on positions)
     if cleanup == "on":
         xyz_final, lwh_final = batch_optimized_inference(
-            model, volumes, z_samples,
+            model,
+            volumes,
+            z_samples,
             target=targets if conditional else None,
         )
         xyz_final = xyz_final.detach()
@@ -119,8 +152,10 @@ def evaluate_seed(model, seed, N, seq_len, cleanup="off", conditional=False, den
     if seq_len > 1:
         log_ar = torch.log(
             torch.stack(
-                [lwh_final[:, :, 1] / lwh_final[:, :, 0],
-                 lwh_final[:, :, 2] / lwh_final[:, :, 0]],
+                [
+                    lwh_final[:, :, 1] / lwh_final[:, :, 0],
+                    lwh_final[:, :, 2] / lwh_final[:, :, 0],
+                ],
                 dim=2,
             )
         )
@@ -163,8 +198,9 @@ def check_gradient_flow(model, seq_len):
         return {"status": "OK", "reason": None, "grad_norm": z_grad.grad.norm().item()}
 
 
-def run_smoothness(model, seq_len, output_dir, plot_name, cleanup="off", stride=2,
-                   latent_indices=(0,)):
+def run_smoothness(
+    model, seq_len, output_dir, plot_name, cleanup="off", stride=2, latent_indices=(0,)
+):
     n_points = 50
     latent_values = torch.linspace(-3.5, 3.5, n_points)
 
@@ -177,10 +213,12 @@ def run_smoothness(model, seq_len, output_dir, plot_name, cleanup="off", stride=
     latent_indices = list(latent_indices)
     n_rows = len(latent_indices)
 
-    fig_x, axes_x = plt.subplots(n_rows, n_cols, figsize=(n_cols * 3.5, n_rows * 2.6),
-                                 squeeze=False)
-    fig_z, axes_z = plt.subplots(n_rows, n_cols, figsize=(n_cols * 3.5, n_rows * 2.6),
-                                 squeeze=False)
+    fig_x, axes_x = plt.subplots(
+        n_rows, n_cols, figsize=(n_cols * 3.5, n_rows * 2.6), squeeze=False
+    )
+    fig_z, axes_z = plt.subplots(
+        n_rows, n_cols, figsize=(n_cols * 3.5, n_rows * 2.6), squeeze=False
+    )
 
     for row_idx, latent_idx in enumerate(latent_indices):
         z_sweep = torch.zeros(n_points, latent_dim, device=device)
@@ -197,17 +235,13 @@ def run_smoothness(model, seq_len, output_dir, plot_name, cleanup="off", stride=
 
         for col_idx, box_idx in enumerate(box_indices):
             ax_x = axes_x[row_idx, col_idx]
-            ax_x.plot(
-                latent_values.numpy(), xyz_s[:, box_idx, 0].cpu().numpy()
-            )
+            ax_x.plot(latent_values.numpy(), xyz_s[:, box_idx, 0].cpu().numpy())
             ax_x.set_xlabel(f"z[{latent_idx}]", fontsize=16)
             ax_x.set_ylabel(f"box {box_idx} x pos", fontsize=16)
             ax_x.tick_params(axis="both", labelsize=13)
 
             ax_z = axes_z[row_idx, col_idx]
-            ax_z.plot(
-                latent_values.numpy(), xyz_s[:, box_idx, 2].cpu().numpy()
-            )
+            ax_z.plot(latent_values.numpy(), xyz_s[:, box_idx, 2].cpu().numpy())
             ax_z.set_xlabel(f"z[{latent_idx}]", fontsize=16)
             ax_z.set_ylabel(f"box {box_idx} z pos", fontsize=16)
             ax_z.tick_params(axis="both", labelsize=13)
@@ -226,7 +260,9 @@ def run_smoothness(model, seq_len, output_dir, plot_name, cleanup="off", stride=
     plt.close(fig_z)
 
 
-def run_density_sweep(model, seq_len, N, num_seeds, output_dir, plot_name, cleanup="off", ldv_raw=False):
+def run_density_sweep(
+    model, seq_len, N, num_seeds, output_dir, plot_name, cleanup="off", ldv_raw=False
+):
     densities = [0.1, 0.2, 0.3, 0.5, 0.7, 0.9]
     results_by_density = {}
 
@@ -234,8 +270,13 @@ def run_density_sweep(model, seq_len, N, num_seeds, output_dir, plot_name, clean
         seed_results = []
         for seed in range(num_seeds):
             r = evaluate_seed(
-                model, seed, N, seq_len,
-                cleanup=cleanup, conditional=True, density=density,
+                model,
+                seed,
+                N,
+                seq_len,
+                cleanup=cleanup,
+                conditional=True,
+                density=density,
                 ldv_raw=ldv_raw,
             )
             seed_results.append(r)
@@ -263,8 +304,9 @@ def run_density_sweep(model, seq_len, N, num_seeds, output_dir, plot_name, clean
     sat_err = [results_by_density[f"{d:.2f}"]["satisfaction"]["std"] for d in densities]
     overlaps = [results_by_density[f"{d:.2f}"]["overlap"]["mean"] for d in densities]
 
-    ax1.errorbar(densities, sats, yerr=sat_err, marker="o", color="C0",
-                 label="Satisfaction rate")
+    ax1.errorbar(
+        densities, sats, yerr=sat_err, marker="o", color="C0", label="Satisfaction rate"
+    )
     ax1.set_xlabel("Constraint density")
     ax1.set_ylabel("Satisfaction rate", color="C0")
     ax1.set_ylim(0, 1.05)
@@ -274,7 +316,9 @@ def run_density_sweep(model, seq_len, N, num_seeds, output_dir, plot_name, clean
     ax2.set_ylabel("Overlap", color="C3")
     ax2.tick_params(axis="y", labelcolor="C3")
 
-    plt.title(f"Density sweep (seq_len={seq_len}, N={N}, {num_seeds} seeds, cleanup={cleanup})")
+    plt.title(
+        f"Density sweep (seq_len={seq_len}, N={N}, {num_seeds} seeds, cleanup={cleanup})"
+    )
     fig.tight_layout()
     fig.savefig(
         f"{output_dir}/density_sweep_sl{seq_len}_cleanup-{cleanup}{plot_name}.png",
@@ -297,6 +341,7 @@ if __name__ == "__main__":
     if args.model == "parallel" and args.ablation != "baseline":
         # Reconstruct with same kwargs as training
         from cpm.models.parallel_transformer import ParallelBoxGenerator
+
         if args.ablation == "z_token":
             model = ParallelBoxGenerator(z_conditioning="token").to(device)
         elif args.ablation == "z_both":
@@ -324,8 +369,12 @@ if __name__ == "__main__":
     all_results = []
     for seed in range(args.num_seeds):
         result = evaluate_seed(
-            model, seed, args.n, args.seq_len,
-            cleanup=args.cleanup, conditional=args.conditional,
+            model,
+            seed,
+            args.n,
+            args.seq_len,
+            cleanup=args.cleanup,
+            conditional=args.conditional,
             ldv_raw=args.ldv_raw,
         )
         all_results.append(result)
@@ -339,7 +388,9 @@ if __name__ == "__main__":
         for key in all_results[0].keys()
     }
 
-    print(f"\nResults over {args.num_seeds} seeds (N={args.n}, seq_len={args.seq_len}, cleanup={args.cleanup}):")
+    print(
+        f"\nResults over {args.num_seeds} seeds (N={args.n}, seq_len={args.seq_len}, cleanup={args.cleanup}):"
+    )
     print(f"Weights: {args.weights}")
     print("-" * 50)
     for key, v in agg.items():
@@ -352,16 +403,22 @@ if __name__ == "__main__":
     # Smoothness plots
     if not args.skip_smoothness:
         print("\nGenerating smoothness plots...")
-        run_smoothness(model, args.seq_len, args.output_dir,
-                       args.plot_name, cleanup=args.cleanup)
+        run_smoothness(
+            model, args.seq_len, args.output_dir, args.plot_name, cleanup=args.cleanup
+        )
 
     # Density sweep (conditional only)
     density_results = None
     if args.conditional and not args.skip_density_sweep:
         print("\nRunning density sweep...")
         density_results = run_density_sweep(
-            model, args.seq_len, args.n, args.num_seeds,
-            args.output_dir, args.plot_name, cleanup=args.cleanup,
+            model,
+            args.seq_len,
+            args.n,
+            args.num_seeds,
+            args.output_dir,
+            args.plot_name,
+            cleanup=args.cleanup,
             ldv_raw=args.ldv_raw,
         )
 

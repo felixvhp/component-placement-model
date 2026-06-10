@@ -60,7 +60,7 @@ def DPP_loss(x, sigma=1, eps=1e-6):
     mean, std = x_flat.mean(dim=0), x_flat.std(dim=0)
     x_norm = (x_flat - mean) / (std + 1e-6)
 
-    D2 = torch.cdist(x_norm, x_norm, compute_mode='donot_use_mm_for_euclid_dist').pow(2)
+    D2 = torch.cdist(x_norm, x_norm, compute_mode="donot_use_mm_for_euclid_dist").pow(2)
     K = torch.exp(-D2 / (2 * sigma**2))
 
     return _log_det(K, batch_size, eps)
@@ -69,7 +69,7 @@ def DPP_loss(x, sigma=1, eps=1e-6):
 def DPP_AR_loss(x, sigma=1, eps=1e-6):
     """DPP loss on flattened box sequences (e.g. aspect ratios)."""
     x = x.view(x.size(0), -1)
-    D2 = torch.cdist(x, x, compute_mode='donot_use_mm_for_euclid_dist').pow(2)
+    D2 = torch.cdist(x, x, compute_mode="donot_use_mm_for_euclid_dist").pow(2)
     K = torch.exp(-D2 / (2 * sigma**2))
     return _log_det(K, K.shape[0], eps)
 
@@ -79,9 +79,10 @@ def DPP_loss_adjacency(A, sigma=1, eps=1e-6):
     batch_size, n1, n2 = A.shape
     assert n1 == n2, "A must be square"
     A_flat = A.reshape(batch_size, -1)
-    D2 = torch.cdist(A_flat, A_flat, compute_mode='donot_use_mm_for_euclid_dist').pow(2)
+    D2 = torch.cdist(A_flat, A_flat, compute_mode="donot_use_mm_for_euclid_dist").pow(2)
     K = torch.exp(-D2 / (2 * sigma**2))
     return _log_det(K, batch_size, eps)
+
 
 def DPP_loss_adjacency_normalized(A, sigma=1, eps=1e-6):
     """Scale-invariant variant of DPP_loss_adjacency.
@@ -95,7 +96,6 @@ def DPP_loss_adjacency_normalized(A, sigma=1, eps=1e-6):
     D2 = torch.cdist(A_flat, A_flat).pow(2) / (n1 * n2)
     K = torch.exp(-D2 / (2 * sigma**2))
     return _log_det(K, batch_size, eps)
-
 
 
 # -------------------------------------------------

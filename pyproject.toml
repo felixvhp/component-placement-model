@@ -92,6 +92,12 @@ select = [
 ignore = [
     "B008",  # do not perform function calls in argument defaults
     "F401",
+    # ML/math naming: uppercase math vars (N, D_MODEL, matrices A), DPP_* fn names
+    "N802", "N803", "N806",
+    # Math symbols in identifiers (λ for Lagrangian / loss weights)
+    "PLC2401", "RUF003",
+    # Research-code style: many-arg models, math magic numbers, plain exception args
+    "PLR0913", "PLR2004", "TRY003",
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
@@ -109,6 +115,9 @@ max-args = 5
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["PLR2004"]  # allow magic values in tests
+# interactive.py is a matplotlib-widget dev tool: callbacks need globals, and it
+# keeps commented-out model configs as quick toggles.
+"interactive.py" = ["PLW0602", "PLW0603", "ERA001"]
 
 [tool.mypy]
 warn_redundant_casts = true

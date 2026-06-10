@@ -8,8 +8,8 @@ from cpm.config import (
     length_limits,
     width_limits,
 )
-from cpm.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
 from cpm.models.components import AuxiliaryPredictor, FourierEncoding
+from cpm.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
 
 # Defaults (used when no args passed)
 DEFAULT_D_MODEL = 256
@@ -30,9 +30,9 @@ class ParallelBoxGenerator(nn.Module):
         dim_ff=None,
         dropout=DEFAULT_DROPOUT,
         # Ablation switches
-        z_conditioning="adaln",      # "adaln" | "token | both"
-        vol_encoding="fourier",      # "fourier" | "linear"
-        vol_concat_head=True,        # True | False
+        z_conditioning="adaln",  # "adaln" | "token | both"
+        vol_encoding="fourier",  # "fourier" | "linear"
+        vol_concat_head=True,  # True | False
     ):
         super().__init__()
         self.device = device or torch.device("cpu")
@@ -64,14 +64,22 @@ class ParallelBoxGenerator(nn.Module):
             raise ValueError(f"unknown vol_encoding: {vol_encoding}")
 
         # Transformer blocks
-        self.self_attn_blocks = nn.ModuleList([
-            BoxDiTBlock(d_model, n_heads, mlp_ratio=self.dim_ff / d_model, dropout=dropout)
-            for _ in range(n_layers)
-        ])
-        self.cross_attn_blocks = nn.ModuleList([
-            BoxDiTCrossAttnBlock(d_model, n_heads, mlp_ratio=self.dim_ff / d_model, dropout=dropout)
-            for _ in range(n_layers)
-        ])
+        self.self_attn_blocks = nn.ModuleList(
+            [
+                BoxDiTBlock(
+                    d_model, n_heads, mlp_ratio=self.dim_ff / d_model, dropout=dropout
+                )
+                for _ in range(n_layers)
+            ]
+        )
+        self.cross_attn_blocks = nn.ModuleList(
+            [
+                BoxDiTCrossAttnBlock(
+                    d_model, n_heads, mlp_ratio=self.dim_ff / d_model, dropout=dropout
+                )
+                for _ in range(n_layers)
+            ]
+        )
         zero_init_adaln(self.self_attn_blocks)
         zero_init_adaln(self.cross_attn_blocks)
 
@@ -92,9 +100,15 @@ class ParallelBoxGenerator(nn.Module):
         dims = torch.sigmoid(raw[..., :3]) + 1e-4
         pos = raw[..., 3:]
         box = torch.cat([dims, pos], dim=-1).clone()
-        box[..., 0] = box[..., 0] * (length_limits[1] - length_limits[0]) + length_limits[0]
-        box[..., 1] = box[..., 1] * (width_limits[1] - width_limits[0]) + width_limits[0]
-        box[..., 2] = box[..., 2] * (height_limits[1] - height_limits[0]) + height_limits[0]
+        box[..., 0] = (
+            box[..., 0] * (length_limits[1] - length_limits[0]) + length_limits[0]
+        )
+        box[..., 1] = (
+            box[..., 1] * (width_limits[1] - width_limits[0]) + width_limits[0]
+        )
+        box[..., 2] = (
+            box[..., 2] * (height_limits[1] - height_limits[0]) + height_limits[0]
+        )
         box[..., 4] = 0.0
         return box
 
@@ -136,7 +150,9 @@ class ParallelBoxGenerator(nn.Module):
         q = q + self.query_embed(slot_ids).unsqueeze(0)
 
         # ── transformer blocks ──────────────────────────
-        for self_block, cross_block in zip(self.self_attn_blocks, self.cross_attn_blocks):
+        for self_block, cross_block in zip(
+            self.self_attn_blocks, self.cross_attn_blocks
+        ):
             q = self_block(q, c)
             q = cross_block(q, context, c)
 

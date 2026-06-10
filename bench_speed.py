@@ -68,8 +68,12 @@ def time_block(model, vols, z, *, backward, reps):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--batch", type=int, default=100,
-                    help="batch size (matches eval: 100 latent samples)")
+    ap.add_argument(
+        "--batch",
+        type=int,
+        default=100,
+        help="batch size (matches eval: 100 latent samples)",
+    )
     ap.add_argument("--seq_lens", type=int, nargs="+", default=[3, 10])
     ap.add_argument("--seeds", type=int, default=10)
     ap.add_argument("--reps", type=int, default=50, help="timed reps per measurement")
@@ -77,8 +81,10 @@ def main():
     ap.add_argument("--out", type=str, default="results/speed_benchmark.json")
     args = ap.parse_args()
 
-    print(f"device={device}, batch={args.batch}, reps={args.reps}, "
-          f"warmup={args.warmup}, seeds={args.seeds}")
+    print(
+        f"device={device}, batch={args.batch}, reps={args.reps}, "
+        f"warmup={args.warmup}, seeds={args.seeds}"
+    )
 
     results = {}
     for mname, Mclass in MODELS.items():
@@ -109,10 +115,19 @@ def main():
                 print(f"{key:28s} {t.mean():8.3f} +/- {t.std(unbiased=False):6.3f} ms")
 
     import os
+
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w") as f:
-        json.dump({"device": str(device), "batch": args.batch,
-                   "reps": args.reps, "results": results}, f, indent=2)
+        json.dump(
+            {
+                "device": str(device),
+                "batch": args.batch,
+                "reps": args.reps,
+                "results": results,
+            },
+            f,
+            indent=2,
+        )
     print(f"\nSaved: {args.out}")
 
 

@@ -8,8 +8,8 @@ from cpm.config import (
     length_limits,
     width_limits,
 )
-from cpm.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
 from cpm.models.components import AuxiliaryPredictor, FourierEncoding
+from cpm.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
 
 D_MODEL = 256
 N_HEAD = 8
@@ -43,8 +43,12 @@ class ConstraintEncoder(nn.Module):
         batch_size, n, _, _ = target.shape
         if n < self.max_n:
             padded = torch.zeros(
-                batch_size, self.max_n, self.max_n, 3,
-                device=target.device, dtype=target.dtype,
+                batch_size,
+                self.max_n,
+                self.max_n,
+                3,
+                device=target.device,
+                dtype=target.dtype,
             )
             padded[:, :n, :n, :] = target
             target = padded
@@ -137,7 +141,9 @@ class ConditionalParallelBoxGenerator(nn.Module):
 
         return box
 
-    def forward(self, volume: torch.Tensor, latent_z: torch.Tensor, target: torch.Tensor = None):
+    def forward(
+        self, volume: torch.Tensor, latent_z: torch.Tensor, target: torch.Tensor = None
+    ):
         """
         volume  : [batch, seq_len]       — target volumes for each box
         latent_z: [batch, latent_dim]    — latent conditioning code

@@ -37,6 +37,7 @@ loss_weight_schedule = {
     "adjacency": {"initial": 1.0, "final": 30.0},
 }
 
+
 def get_loss_weights(epoch):
     s = loss_weight_schedule
     ramp_start = s["ramp_start"]
@@ -63,18 +64,19 @@ def get_loss_weights(epoch):
     else:
         return tuple(s[k]["final"] for k in keys)
 
+
 # -------------------------------------------------
 #  Projector settings (LM step + PAL-EMA)
 # -------------------------------------------------
 
 projector_config = {
-    "delta": 1e-3,          # YF damping scale: lam = delta * ||c||^2
-    "lam_min": 1e-6,        # damping floor
-    "feas_tol": 1e-7,       # post-projection residual tolerance for EMA
-    "disp_tol": 1e-1,       # displacement tolerance for EMA
+    "delta": 1e-3,  # YF damping scale: lam = delta * ||c||^2
+    "lam_min": 1e-6,  # damping floor
+    "feas_tol": 1e-7,  # post-projection residual tolerance for EMA
+    "disp_tol": 1e-1,  # displacement tolerance for EMA
     "ema_max_decades": 1.0,
     "ema_rate": 1e-2,
-    "grad_clip": 20.0,      # gradient clip norm (supervisor default)
+    "grad_clip": 20.0,  # gradient clip norm (supervisor default)
 }
 
 
