@@ -1,0 +1,295 @@
+{
+  "model": "cond_parallel",
+  "weights": "experiments/cond_parallel_ramp_plain_april_s8.pth",
+  "seq_len": 3,
+  "n_samples": 100,
+  "num_seeds": 1,
+  "cleanup": "on",
+  "conditional": true,
+  "metrics": {
+    "overlap": {
+      "mean": 0.0030764457769691944,
+      "std": 0.0
+    },
+    "vol_accuracy": {
+      "mean": 0.9999999756287039,
+      "std": 0.0
+    },
+    "compactness": {
+      "mean": 0.49747398495674133,
+      "std": 0.0
+    },
+    "position_spread": {
+      "mean": 0.21127235889434814,
+      "std": 0.0
+    },
+    "shape_spread": {
+      "mean": 0.9488363265991211,
+      "std": 0.0
+    },
+    "ar_dpp": {
+      "mean": 0.9702824354171753,
+      "std": 0.0
+    },
+    "ldv": {
+      "mean": 20.70923614501953,
+      "std": 0.0
+    },
+    "mi": {
+      "mean": 1.2492518424987793,
+      "std": 0.0
+    },
+    "satisfaction": {
+      "mean": 0.9489795565605164,
+      "std": 0.0
+    }
+  },
+  "per_seed": [
+    {
+      "overlap": 0.0030764457769691944,
+      "vol_accuracy": 0.9999999756287039,
+      "compactness": 0.49747398495674133,
+      "position_spread": 0.21127235889434814,
+      "shape_spread": 0.9488363265991211,
+      "ar_dpp": 0.9702824354171753,
+      "ldv": 20.70923614501953,
+      "mi": 1.2492518424987793,
+      "satisfaction": 0.9489795565605164
+    }
+  ],
+  "gradient_flow": {
+    "status": "OK",
+    "reason": null,
+    "grad_norm": 0.0
+  },
+  "density_sweep": {
+    "0.10": {
+      "overlap": {
+        "mean": 0.0018330083694308996,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9999999800561987,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.5697299242019653,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.17892953753471375,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.9629222750663757,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 0.9723941087722778,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 22.066802978515625,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.249040126800537,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 1.0,
+        "std": 0.0
+      }
+    },
+    "0.20": {
+      "overlap": {
+        "mean": 0.0026289578527212143,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9999999757049238,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.5304001569747925,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.1999654322862625,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.954943060874939,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 0.9758930802345276,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 21.135089874267578,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.249105453491211,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 0.9714285731315613,
+        "std": 0.0
+      }
+    },
+    "0.30": {
+      "overlap": {
+        "mean": 0.0030764457769691944,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9999999756287039,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.49747398495674133,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.21127235889434814,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.9488363265991211,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 0.9702824354171753,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 20.70923614501953,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.2492518424987793,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 0.9489795565605164,
+        "std": 0.0
+      }
+    },
+    "0.50": {
+      "overlap": {
+        "mean": 0.0035052564926445484,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9999999796891874,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.4747237265110016,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.22297228872776031,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.944786787033081,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 0.9230995774269104,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 20.11579704284668,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.251015067100525,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 0.9054054021835327,
+        "std": 0.0
+      }
+    },
+    "0.70": {
+      "overlap": {
+        "mean": 0.003238149918615818,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9999999822350425,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.45899736881256104,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.233257457613945,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.9373154640197754,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 0.9425274729728699,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 19.67498779296875,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.2497837543487549,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 0.9158415794372559,
+        "std": 0.0
+      }
+    },
+    "0.90": {
+      "overlap": {
+        "mean": 0.0021071708761155605,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9999999865971763,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.4536307156085968,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.24453690648078918,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.9198402762413025,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 0.9984889626502991,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 19.220714569091797,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.2501057386398315,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 0.8966789841651917,
+        "std": 0.0
+      }
+    }
+  }
+}

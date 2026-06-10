@@ -1,0 +1,61 @@
+{
+  "model": "ctatiss",
+  "weights": "experiments/ctatiss_projector_plain_s0.pth",
+  "seq_len": 10,
+  "n_samples": 100,
+  "num_seeds": 1,
+  "cleanup": "off",
+  "conditional": false,
+  "metrics": {
+    "overlap": {
+      "mean": 0.06756019592285156,
+      "std": 0.0
+    },
+    "vol_accuracy": {
+      "mean": 0.9901713319122791,
+      "std": 0.0
+    },
+    "compactness": {
+      "mean": 0.6684579253196716,
+      "std": 0.0
+    },
+    "position_spread": {
+      "mean": 0.21393689513206482,
+      "std": 0.0
+    },
+    "shape_spread": {
+      "mean": 0.897636890411377,
+      "std": 0.0
+    },
+    "ar_dpp": {
+      "mean": 0.0025048726238310337,
+      "std": 0.0
+    },
+    "ldv": {
+      "mean": 0.0564887672662735,
+      "std": 0.0
+    },
+    "mi": {
+      "mean": 1.3897172212600708,
+      "std": 0.0
+    }
+  },
+  "per_seed": [
+    {
+      "overlap": 0.06756019592285156,
+      "vol_accuracy": 0.9901713319122791,
+      "compactness": 0.6684579253196716,
+      "position_spread": 0.21393689513206482,
+      "shape_spread": 0.897636890411377,
+      "ar_dpp": 0.0025048726238310337,
+      "ldv": 0.0564887672662735,
+      "mi": 1.3897172212600708
+    }
+  ],
+  "gradient_flow": {
+    "status": "OK",
+    "reason": null,
+    "grad_norm": 0.08962263911962509
+  },
+  "density_sweep": null
+}

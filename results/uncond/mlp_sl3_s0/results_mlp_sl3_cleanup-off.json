@@ -1,0 +1,61 @@
+{
+  "model": "mlp",
+  "weights": "experiments/mlp_projector_plain_s0.pth",
+  "seq_len": 3,
+  "n_samples": 100,
+  "num_seeds": 1,
+  "cleanup": "off",
+  "conditional": false,
+  "metrics": {
+    "overlap": {
+      "mean": 0.004533747211098671,
+      "std": 0.0
+    },
+    "vol_accuracy": {
+      "mean": 0.38027143478393555,
+      "std": 0.0
+    },
+    "compactness": {
+      "mean": 0.3485027253627777,
+      "std": 0.0
+    },
+    "position_spread": {
+      "mean": 0.16811434924602509,
+      "std": 0.0
+    },
+    "shape_spread": {
+      "mean": 0.9441735744476318,
+      "std": 0.0
+    },
+    "ar_dpp": {
+      "mean": 1.7341381311416626,
+      "std": 0.0
+    },
+    "ldv": {
+      "mean": 22.189245223999023,
+      "std": 0.0
+    },
+    "mi": {
+      "mean": 2.7907803058624268,
+      "std": 0.0
+    }
+  },
+  "per_seed": [
+    {
+      "overlap": 0.004533747211098671,
+      "vol_accuracy": 0.38027143478393555,
+      "compactness": 0.3485027253627777,
+      "position_spread": 0.16811434924602509,
+      "shape_spread": 0.9441735744476318,
+      "ar_dpp": 1.7341381311416626,
+      "ldv": 22.189245223999023,
+      "mi": 2.7907803058624268
+    }
+  ],
+  "gradient_flow": {
+    "status": "OK",
+    "reason": null,
+    "grad_norm": 0.0
+  },
+  "density_sweep": null
+}

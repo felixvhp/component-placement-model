@@ -1,0 +1,61 @@
+{
+  "model": "parallel",
+  "weights": "experiments/parallel_projector_plain_s6.pth",
+  "seq_len": 3,
+  "n_samples": 100,
+  "num_seeds": 1,
+  "cleanup": "off",
+  "conditional": false,
+  "metrics": {
+    "overlap": {
+      "mean": 0.012830968014895916,
+      "std": 0.0
+    },
+    "vol_accuracy": {
+      "mean": 0.9841334149241447,
+      "std": 0.0
+    },
+    "compactness": {
+      "mean": 0.6348000764846802,
+      "std": 0.0
+    },
+    "position_spread": {
+      "mean": 0.1936887800693512,
+      "std": 0.0
+    },
+    "shape_spread": {
+      "mean": 1.0573492050170898,
+      "std": 0.0
+    },
+    "ar_dpp": {
+      "mean": 0.7287598848342896,
+      "std": 0.0
+    },
+    "ldv": {
+      "mean": 20.880992889404297,
+      "std": 0.0
+    },
+    "mi": {
+      "mean": 1.4468470811843872,
+      "std": 0.0
+    }
+  },
+  "per_seed": [
+    {
+      "overlap": 0.012830968014895916,
+      "vol_accuracy": 0.9841334149241447,
+      "compactness": 0.6348000764846802,
+      "position_spread": 0.1936887800693512,
+      "shape_spread": 1.0573492050170898,
+      "ar_dpp": 0.7287598848342896,
+      "ldv": 20.880992889404297,
+      "mi": 1.4468470811843872
+    }
+  ],
+  "gradient_flow": {
+    "status": "OK",
+    "reason": null,
+    "grad_norm": 0.07381901144981384
+  },
+  "density_sweep": null
+}

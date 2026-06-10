@@ -1,0 +1,295 @@
+{
+  "model": "cond_parallel",
+  "weights": "experiments/cond_parallel_ramp_plain_april_s6.pth",
+  "seq_len": 3,
+  "n_samples": 100,
+  "num_seeds": 1,
+  "cleanup": "off",
+  "conditional": true,
+  "metrics": {
+    "overlap": {
+      "mean": 0.018583841621875763,
+      "std": 0.0
+    },
+    "vol_accuracy": {
+      "mean": 0.9923383248969913,
+      "std": 0.0
+    },
+    "compactness": {
+      "mean": 0.5711665153503418,
+      "std": 0.0
+    },
+    "position_spread": {
+      "mean": 0.23827126622200012,
+      "std": 0.0
+    },
+    "shape_spread": {
+      "mean": 0.8598523139953613,
+      "std": 0.0
+    },
+    "ar_dpp": {
+      "mean": 1.1746547222137451,
+      "std": 0.0
+    },
+    "ldv": {
+      "mean": 19.897891998291016,
+      "std": 0.0
+    },
+    "mi": {
+      "mean": 1.273397445678711,
+      "std": 0.0
+    },
+    "satisfaction": {
+      "mean": 1.0,
+      "std": 0.0
+    }
+  },
+  "per_seed": [
+    {
+      "overlap": 0.018583841621875763,
+      "vol_accuracy": 0.9923383248969913,
+      "compactness": 0.5711665153503418,
+      "position_spread": 0.23827126622200012,
+      "shape_spread": 0.8598523139953613,
+      "ar_dpp": 1.1746547222137451,
+      "ldv": 19.897891998291016,
+      "mi": 1.273397445678711,
+      "satisfaction": 1.0
+    }
+  ],
+  "gradient_flow": {
+    "status": "OK",
+    "reason": null,
+    "grad_norm": 0.031108541414141655
+  },
+  "density_sweep": {
+    "0.10": {
+      "overlap": {
+        "mean": 0.007631042972207069,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9923785487189889,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.5783981084823608,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.20443709194660187,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.8727792501449585,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 1.1349546909332275,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 21.513734817504883,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.2716175317764282,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 1.0,
+        "std": 0.0
+      }
+    },
+    "0.20": {
+      "overlap": {
+        "mean": 0.010899556800723076,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9924365263432264,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.5628635287284851,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.2248072326183319,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.8649786710739136,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 1.1462544202804565,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 20.528520584106445,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.272982120513916,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 1.0,
+        "std": 0.0
+      }
+    },
+    "0.30": {
+      "overlap": {
+        "mean": 0.018583841621875763,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9923383248969913,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.5711665153503418,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.23827126622200012,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.8598523139953613,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 1.1746547222137451,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 19.897891998291016,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.273397445678711,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 1.0,
+        "std": 0.0
+      }
+    },
+    "0.50": {
+      "overlap": {
+        "mean": 0.023689189925789833,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9924267288297415,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.5487279295921326,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.24429719150066376,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.8575085401535034,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 1.1939901113510132,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 19.369571685791016,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.274764895439148,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 0.9932432770729065,
+        "std": 0.0
+      }
+    },
+    "0.70": {
+      "overlap": {
+        "mean": 0.01749894767999649,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9925313773564994,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.5035305619239807,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.2554263770580292,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.8545565605163574,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 1.215956211090088,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 19.132583618164062,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.2750675678253174,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 0.9801980257034302,
+        "std": 0.0
+      }
+    },
+    "0.90": {
+      "overlap": {
+        "mean": 0.01578296720981598,
+        "std": 0.0
+      },
+      "vol_accuracy": {
+        "mean": 0.9927626489661634,
+        "std": 0.0
+      },
+      "compactness": {
+        "mean": 0.4817768633365631,
+        "std": 0.0
+      },
+      "position_spread": {
+        "mean": 0.259575754404068,
+        "std": 0.0
+      },
+      "shape_spread": {
+        "mean": 0.8545346260070801,
+        "std": 0.0
+      },
+      "ar_dpp": {
+        "mean": 1.2029954195022583,
+        "std": 0.0
+      },
+      "ldv": {
+        "mean": 18.830713272094727,
+        "std": 0.0
+      },
+      "mi": {
+        "mean": 1.2731024026870728,
+        "std": 0.0
+      },
+      "satisfaction": {
+        "mean": 0.9520295262336731,
+        "std": 0.0
+      }
+    }
+  }
+}

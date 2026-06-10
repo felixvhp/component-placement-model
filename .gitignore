@@ -190,7 +190,8 @@ Thumbs.db
 experiments/
 wandb/
 logs/
-results/
+# results/ JSON (the report's metrics) is committed; the regenerable eval plots are not
+results/**/*.png
 smoothness/
 plots/
 latex/*
