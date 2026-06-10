@@ -58,10 +58,9 @@ class CTATISSBoxGenerator(nn.Module):
         )
         zero_init_adaln(self.blocks)
 
-        # output head maybe add latent code later
+        # output head
         self.output_head = nn.Sequential(
             nn.Linear(D_MODEL + 1, D_MODEL),
-            # nn.Linear(D_MODEL, D_MODEL),
             nn.LeakyReLU(),
             nn.Linear(D_MODEL, box_dim),
         )
@@ -123,7 +122,6 @@ class CTATISSBoxGenerator(nn.Module):
             h_last = h[:, -1, :]
 
             # predict box
-            # raw = self.output_head(h_last)  # [batch, box_dim]
             raw = self.output_head(torch.cat([h_last, volume[:, i : i + 1]], dim=-1))
             box = self._scale_box(raw)
             boxes[:, i, :] = box
