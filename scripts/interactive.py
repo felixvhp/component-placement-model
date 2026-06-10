@@ -1,3 +1,4 @@
+import argparse
 import os
 
 import matplotlib.pyplot as plt
@@ -14,24 +15,24 @@ from cpm.models.baseline import AutoRegressiveBoxGenerator
 from cpm.models.conditional_parallel import ConditionalParallelBoxGenerator
 from cpm.models.parallel_transformer import ParallelBoxGenerator
 
-# Initialize model with same parameters as training
+# Unconditional model to view is chosen via --model; the conditional toggle in the
+# GUI always uses cond_parallel.
+UNCOND_MODELS = {
+    "mlp": (AutoRegressiveBoxGenerator, "checkpoints/mlp.pth"),
+    "ctatiss": (CTATISSBoxGenerator, "checkpoints/ctatiss.pth"),
+    "parallel": (ParallelBoxGenerator, "checkpoints/parallel.pth"),
+}
+
+_parser = argparse.ArgumentParser(description="Interactive box-placement viewer")
+_parser.add_argument("--model", choices=list(UNCOND_MODELS), default="parallel")
+_args = _parser.parse_args()
+_uncond_cls, _uncond_path = UNCOND_MODELS[_args.model]
+
 MODEL_CONFIGS = {
-    "unconditional": {
-        # "cls": AutoRegressiveBoxGenerator,
-        # "path": os.path.join(
-        #    os.path.dirname(__file__), "experiments/mlp_projector_plain_s42.pth"
-        # ),
-        "cls": CTATISSBoxGenerator,
-        "path": "experiments/ctatiss_projector_plain_s3.pth",
-        # "cls": ParallelBoxGenerator,
-        # "path": os.path.join(
-        #   os.path.dirname(__file__),
-        #   "demo/parallel_projector_plain_s1.pth",
-        # ),
-    },
+    "unconditional": {"cls": _uncond_cls, "path": _uncond_path},
     "conditional": {
         "cls": ConditionalParallelBoxGenerator,
-        "path": "experiments/cond_parallel_projector_plain_s42_3.pth",
+        "path": "checkpoints/cond_parallel.pth",
     },
 }
 
