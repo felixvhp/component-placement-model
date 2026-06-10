@@ -77,10 +77,11 @@ Simpler to reason about, but duplicates code and drifts from this repo.
 ### Checkpoint
 
 GLUE loads `internals_model/box_arrangement_model.pth` with **strict** state-dict
-loading. Provide the trained weights for your chosen model, e.g. rename
-`experiments/parallel_projector_plain_s0.pth` → `box_arrangement_model.pth`. The
-state-dict must match the swapped-in class (it will, since GLUE constructs the
-same class it loads).
+loading. The canonical trained weights are committed in this repo under
+`checkpoints/` (`mlp.pth`, `ctatiss.pth`, `parallel.pth`, `cond_parallel.pth`);
+copy the one for your chosen model to `box_arrangement_model.pth`. The state-dict
+must match the swapped-in class (it will, since GLUE constructs the same class it
+loads).
 
 ## Caveats
 

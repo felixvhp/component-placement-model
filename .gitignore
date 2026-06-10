@@ -196,8 +196,9 @@ plots/
 latex/
 tmpdb_*/
 
-# Model checkpoints
+# Model checkpoints (experiments/ are ignored; the canonical ones in checkpoints/ are committed)
 *.pth
+!checkpoints/*.pth
 
 # Generated plots / tables at repo root
 density_sweep*.png
