@@ -4,9 +4,7 @@ channels:
 dependencies:
   - python=3.11.8
   - pip
+  # Runtime dependencies are declared in pyproject.toml; install the package
+  # (editable) so there is a single source of truth.
   - pip:
-    - torch
-    - numpy
-    - matplotlib
-    - scipy
-    - tqdm
+      - -e .
