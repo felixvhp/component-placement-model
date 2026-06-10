@@ -3,7 +3,7 @@
 import torch
 from torch import nn
 
-from src.config import latent_dim
+from cpm.config import latent_dim
 
 
 class FourierEncoding(nn.Module):

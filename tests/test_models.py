@@ -4,11 +4,11 @@ producing correctly shaped, finite output."""
 import pytest
 import torch
 
-from src.config import box_dim, latent_dim, volume_limits
-from src.models.atiss import CTATISSBoxGenerator
-from src.models.baseline import AutoRegressiveBoxGenerator
-from src.models.conditional_parallel import ConditionalParallelBoxGenerator
-from src.models.parallel_transformer import ParallelBoxGenerator
+from cpm.config import box_dim, latent_dim, volume_limits
+from cpm.models.atiss import CTATISSBoxGenerator
+from cpm.models.baseline import AutoRegressiveBoxGenerator
+from cpm.models.conditional_parallel import ConditionalParallelBoxGenerator
+from cpm.models.parallel_transformer import ParallelBoxGenerator
 
 MODELS = {
     "mlp": AutoRegressiveBoxGenerator,

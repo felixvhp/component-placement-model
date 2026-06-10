@@ -2,7 +2,7 @@
 
 This repository is a research extension of GLUE's **internals subsystem**
 (`UAV/subsystems/internals_model/` in the GLUE repo). The `mlp` baseline here
-(`AutoRegressiveBoxGenerator`, `src/models/baseline.py`) *is* GLUE's current
+(`AutoRegressiveBoxGenerator`, `cpm/models/baseline.py`) *is* GLUE's current
 internals generator; the other models (`ctatiss`, `parallel`, `cond_parallel`)
 are the improved architectures from the report. This doc explains how to swap
 one of them in.
@@ -36,10 +36,10 @@ So the module `autoregressive_generator.py` must export:
 
 | Symbol | This repo's equivalent | Value |
 |---|---|---|
-| `AutoRegressiveBoxGenerator` (class) | any model in `src/models/` | `forward(volume, latent_z) -> (boxes, z_pred)` |
-| `latent_dim` | `src/config.py` | `4` |
-| `volume_limits` | `src/config.py` | `[0.005, 0.1]` |
-| `batch_optimized_inference` | `src/inference.py` | `(model, vols, z) -> (xyz, lwh)` |
+| `AutoRegressiveBoxGenerator` (class) | any model in `cpm/models/` | `forward(volume, latent_z) -> (boxes, z_pred)` |
+| `latent_dim` | `cpm/config.py` | `4` |
+| `volume_limits` | `cpm/config.py` | `[0.005, 0.1]` |
+| `batch_optimized_inference` | `cpm/inference.py` | `(model, vols, z) -> (xyz, lwh)` |
 
 **Tensor shapes** (all `[batch, ...]`):
 - `vol_req` / `volume`: `[B, n_boxes]` target box volumes
@@ -55,8 +55,7 @@ Every model here (`mlp`, `ctatiss`, `parallel`, `cond_parallel`) already honors
 ### Option A — install this repo as a package (recommended)
 
 1. In GLUE's environment: `pip install -e /path/to/component-placement-model`
-   (requires the packaging step — see Tier 3 in the repo's cleanup notes; the
-   package would be importable as e.g. `cpm`).
+   (the repo is a packaged project, importable as `cpm`).
 2. Re-export from GLUE's `internals_model/autoregressive_generator.py`:
    ```python
    from cpm.models.parallel_transformer import ParallelBoxGenerator as AutoRegressiveBoxGenerator
@@ -70,8 +69,8 @@ No changes to GLUE's calling code — `load_subsystem_models` and
 
 ### Option B — copy files in-place
 
-Copy `src/models/{parallel_transformer,dit_block,components}.py`, `src/config.py`,
-and `src/inference.py` into `internals_model/`, fix the relative imports, and
+Copy `cpm/models/{parallel_transformer,dit_block,components}.py`, `cpm/config.py`,
+and `cpm/inference.py` into `internals_model/`, fix the relative imports, and
 alias the class to `AutoRegressiveBoxGenerator` in `autoregressive_generator.py`.
 Simpler to reason about, but duplicates code and drifts from this repo.
 

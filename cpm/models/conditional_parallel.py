@@ -1,15 +1,15 @@
 import torch
 from torch import nn
 
-from src.config import (
+from cpm.config import (
     box_dim,
     height_limits,
     latent_dim,
     length_limits,
     width_limits,
 )
-from src.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
-from src.models.components import AuxiliaryPredictor, FourierEncoding
+from cpm.models.dit_block import BoxDiTBlock, BoxDiTCrossAttnBlock, zero_init_adaln
+from cpm.models.components import AuxiliaryPredictor, FourierEncoding
 
 D_MODEL = 256
 N_HEAD = 8

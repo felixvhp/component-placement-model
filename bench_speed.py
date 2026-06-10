@@ -18,10 +18,10 @@ import time
 
 import torch
 
-from src.config import latent_dim
-from src.geometry.internals import BatchInternals
-from src.models.atiss import CTATISSBoxGenerator
-from src.models.parallel_transformer import ParallelBoxGenerator
+from cpm.config import latent_dim
+from cpm.geometry.internals import BatchInternals
+from cpm.models.atiss import CTATISSBoxGenerator
+from cpm.models.parallel_transformer import ParallelBoxGenerator
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

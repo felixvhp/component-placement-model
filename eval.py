@@ -6,15 +6,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from src.config import latent_dim, volume_limits
-from src.constraints import sample_target, satisfaction_rate
-from src.geometry.internals import BatchInternals
-from src.inference import batch_optimized_inference
-from src.losses import DPP_AR_loss, DPP_loss_adjacency, DPP_loss_adjacency_normalized, mi_loss
-from src.models.atiss import CTATISSBoxGenerator
-from src.models.baseline import AutoRegressiveBoxGenerator
-from src.models.conditional_parallel import ConditionalParallelBoxGenerator
-from src.models.parallel_transformer import ParallelBoxGenerator
+from cpm.config import latent_dim, volume_limits
+from cpm.constraints import sample_target, satisfaction_rate
+from cpm.geometry.internals import BatchInternals
+from cpm.inference import batch_optimized_inference
+from cpm.losses import DPP_AR_loss, DPP_loss_adjacency, DPP_loss_adjacency_normalized, mi_loss
+from cpm.models.atiss import CTATISSBoxGenerator
+from cpm.models.baseline import AutoRegressiveBoxGenerator
+from cpm.models.conditional_parallel import ConditionalParallelBoxGenerator
+from cpm.models.parallel_transformer import ParallelBoxGenerator
 
 device = torch.device(
     "cuda"
@@ -296,7 +296,7 @@ if __name__ == "__main__":
     # Load model
     if args.model == "parallel" and args.ablation != "baseline":
         # Reconstruct with same kwargs as training
-        from src.models.parallel_transformer import ParallelBoxGenerator
+        from cpm.models.parallel_transformer import ParallelBoxGenerator
         if args.ablation == "z_token":
             model = ParallelBoxGenerator(z_conditioning="token").to(device)
         elif args.ablation == "z_both":

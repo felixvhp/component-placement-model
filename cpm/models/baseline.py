@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.config import (
+from cpm.config import (
     box_dim,
     height_limits,
     latent_dim,
@@ -9,7 +9,7 @@ from src.config import (
     requirement_dim,
     width_limits,
 )
-from src.models.components import AuxiliaryPredictor
+from cpm.models.components import AuxiliaryPredictor
 
 embedding_dim = 1024  # Embedded previously generated boxes
 

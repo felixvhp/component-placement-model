@@ -26,7 +26,7 @@ component-placement-model/
 ├── interactive.py                 # Interactive layout visualization tool
 ├── bench_speed.py                 # Inference speed benchmark
 ├── bootstrap_env.py               # Conda environment setup
-├── src/
+├── cpm/                           # importable package (pip install -e .)
 │   ├── config.py                  # Shared constants (box dims, latent dim, volume limits)
 │   ├── inference.py               # Constraint-aware optimized inference
 │   ├── losses.py                  # DPP / mutual-information diversity losses (train + eval)
@@ -50,6 +50,7 @@ component-placement-model/
 ```
 python bootstrap_env.py
 conda activate gcp-env
+pip install -e .          # makes `import cpm` work from anywhere
 ```
 
 ## Usage

@@ -1,25 +1,19 @@
 import argparse
 import os
-import sys
 
 import numpy as np
 import torch
 from tqdm import tqdm
 import wandb
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
-if root_dir not in sys.path:
-    sys.path.insert(0, root_dir)
-
-from src.geometry.internals import BatchInternals
-from src.losses import (
+from cpm.geometry.internals import BatchInternals
+from cpm.losses import (
     DPP_AR_loss, DPP_loss_adjacency,
     PA_DPP_AR_loss, PA_DPP_loss_adjacency,
     mi_loss,
 )
-from src.config import volume_limits, latent_dim
-from src.constraints import make_constraint_fn
+from cpm.config import volume_limits, latent_dim
+from cpm.constraints import make_constraint_fn
 
 
 # ─────────────────────────────────────────────────────
@@ -57,10 +51,10 @@ def parse_args():
 # ─────────────────────────────────────────────────────
 
 def make_model(name, device):
-    from src.models.baseline import AutoRegressiveBoxGenerator
-    from src.models.atiss import CTATISSBoxGenerator
-    from src.models.parallel_transformer import ParallelBoxGenerator
-    from src.models.conditional_parallel import ConditionalParallelBoxGenerator
+    from cpm.models.baseline import AutoRegressiveBoxGenerator
+    from cpm.models.atiss import CTATISSBoxGenerator
+    from cpm.models.parallel_transformer import ParallelBoxGenerator
+    from cpm.models.conditional_parallel import ConditionalParallelBoxGenerator
     return {
         "mlp": AutoRegressiveBoxGenerator,
         "ctatiss": CTATISSBoxGenerator,
@@ -121,7 +115,7 @@ def compute_losses(bx_pred, target_volumes, latent_codes, z_guess,
 
     # Adjacency conformity (conditional model only)
     if target_adj is not None:
-        from src.constraints import constraint_loss
+        from cpm.constraints import constraint_loss
         Ax, Ay, Az = internals.getAdjacency()
         L["conform"] = constraint_loss(torch.stack([Ax, Ay, Az], dim=-1), target_adj)
 
@@ -136,7 +130,7 @@ def make_model_with_ablation(args, device):
     if args.model != "parallel":
         raise ValueError("Ablations only supported for --model parallel")
 
-    from src.models.parallel_transformer import ParallelBoxGenerator
+    from cpm.models.parallel_transformer import ParallelBoxGenerator
 
     # Defaults
     kwargs = dict(
@@ -197,13 +191,13 @@ def train(args):
 
     # Mode-specific setup
     if use_proj:
-        from src.constraints import lm_project_step, gated_ema_update
-        from src.config import projector_config as pcfg, objective_weights as ow
+        from cpm.constraints import lm_project_step, gated_ema_update
+        from cpm.config import projector_config as pcfg, objective_weights as ow
         lambda_c = torch.zeros(2, device=device)
         lambda_d = torch.zeros(1, device=device)
         grad_clip = pcfg["grad_clip"]
     else:
-        from src.config import get_loss_weights
+        from cpm.config import get_loss_weights
         grad_clip = 1.0
 
     for epoch in tqdm(range(args.epochs), ncols=100):
@@ -226,7 +220,7 @@ def train(args):
             # Forward
             tgt_adj = None
             if is_cond:
-                from src.constraints import sample_target
+                from cpm.constraints import sample_target
                 if args.cond_recipe == "april_unif":
                     density = torch.rand(args.batch_size, device=device) * 0.5
                     tgt_strength = 0.8

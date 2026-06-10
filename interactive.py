@@ -1,27 +1,18 @@
 import os
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib.widgets import RadioButtons, Slider, TextBox
 
-# Add parent directory to path for UAV imports
-script_dir = os.path.dirname(os.path.abspath(__file__))
-root_dir = os.path.dirname(
-    os.path.dirname(script_dir)
-)  # Go up two levels from subsystems/
-if root_dir not in sys.path:
-    sys.path.insert(0, root_dir)
-
-from src.config import latent_dim, volume_limits
-from src.constraints import sample_target
-from src.geometry.internals import Internals
-from src.inference import batch_optimized_inference
-from src.models.atiss import CTATISSBoxGenerator
-from src.models.baseline import AutoRegressiveBoxGenerator
-from src.models.conditional_parallel import ConditionalParallelBoxGenerator
-from src.models.parallel_transformer import ParallelBoxGenerator
+from cpm.config import latent_dim, volume_limits
+from cpm.constraints import sample_target
+from cpm.geometry.internals import Internals
+from cpm.inference import batch_optimized_inference
+from cpm.models.atiss import CTATISSBoxGenerator
+from cpm.models.baseline import AutoRegressiveBoxGenerator
+from cpm.models.conditional_parallel import ConditionalParallelBoxGenerator
+from cpm.models.parallel_transformer import ParallelBoxGenerator
 
 # Initialize model with same parameters as training
 MODEL_CONFIGS = {

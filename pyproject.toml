@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "component-placement-model"
 version = "0.1.0"
@@ -7,6 +11,16 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+    "torch",
+    "numpy",
+    "matplotlib",
+    "tqdm",
+    "wandb",
+]
+
+[tool.setuptools.packages.find]
+include = ["cpm*"]
 
 [project.optional-dependencies]
 dev = [
@@ -88,7 +102,7 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.isort]
-known-first-party = ["src"]
+known-first-party = ["cpm"]
 
 [tool.ruff.lint.pylint]
 max-args = 5
@@ -99,7 +113,7 @@ max-args = 5
 [tool.mypy]
 warn_redundant_casts = true
 warn_unused_ignores = true
-files = ["src/", "tests/"]
+files = ["cpm/", "tests/"]
 exclude = [
   "^build/",
   "^docs/",

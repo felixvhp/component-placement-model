@@ -146,8 +146,8 @@ def setup_environment(name: str, *, recreate: bool = False) -> bool:
 
 
 def install_dev_tools(name: str) -> bool:
-    header("Installing dev tools (ruff, mypy, pytest, pre-commit)")
-    ok, _ = conda_run(name, "pip", "install", ".[dev]", stream=True)
+    header("Installing cpm (editable) + dev tools (ruff, mypy, pytest, pre-commit)")
+    ok, _ = conda_run(name, "pip", "install", "-e", ".[dev]", stream=True)
     if not ok:
         print("  Failed to install dev tools.")
         return False
@@ -186,11 +186,11 @@ def verify(name: str) -> bool:
             print(f"  [FAIL] {label:12s} not found")
             all_ok = False
 
-    ok, _ = conda_run(name, "python", "src/example.py")
+    ok, _ = conda_run(name, "python", "-c", "import cpm")
     if ok:
-        print(f"  [ok]   {'example':12s} src/example.py ran successfully")
+        print(f"  [ok]   {'cpm':12s} package imports")
     else:
-        print(f"  [FAIL] {'example':12s} src/example.py failed")
+        print(f"  [FAIL] {'cpm':12s} package import failed")
         all_ok = False
 
     return all_ok
