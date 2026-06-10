@@ -21,7 +21,7 @@ How can a generative model produce constraint-respecting 3D component layouts in
 ## Project Structure
 ```
 component-placement-model/
-├── train.py                       # Training entry point (mlp, ctatiss, parallel, cond_parallel)
+├── train.py                       # Thin CLI entry point (delegates to cpm.training)
 ├── eval.py                        # Evaluation: metrics, smoothness, density sweeps
 ├── interactive.py                 # Interactive layout visualization tool
 ├── bench_speed.py                 # Inference speed benchmark
@@ -30,6 +30,10 @@ component-placement-model/
 │   ├── config.py                  # Shared constants (box dims, latent dim, volume limits)
 │   ├── inference.py               # Constraint-aware optimized inference
 │   ├── losses.py                  # DPP / mutual-information diversity losses (train + eval)
+│   ├── training/                  # Training: model factory, loss orchestration, loop
+│   │   ├── factory.py             #   make_model / ablation builder
+│   │   ├── objective.py           #   compute_losses
+│   │   └── loop.py                #   train(args)
 │   ├── constraints/               # Constraint domain
 │   │   ├── sampling.py            #   target sampling & satisfaction metrics
 │   │   └── projection.py          #   Levenberg–Marquardt constraint projection
