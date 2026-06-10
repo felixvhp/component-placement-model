@@ -20,7 +20,7 @@ def sample_target(
     batch_size,
     seq_len,
     density=0.3,
-    target_strength=0.3,
+    target_strength=0.8,
     axes=(0, 2),  # skip y by default (y=0 symmetry enforced by the model)
     device="cpu",
 ):
