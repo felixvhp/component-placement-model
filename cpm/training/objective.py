@@ -32,8 +32,8 @@ def compute_losses(
     )
 
     # Compactness
-    if compactness_kind == "april":
-        # using old compactness function for backwards compability, can experiment with new one
+    if compactness_kind == "slender":
+        # slenderness + bbox-volume fill mix (used by the conditional model)
         frontal_area = internals.getRoughViewArea(view="frontal")
         side_view_area = internals.getRoughViewArea(view="side")
         top_view_area = internals.getRoughViewArea(view="top")

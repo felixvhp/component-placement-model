@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=cpm_smooth
-#SBATCH --output=logs/regen_smoothness_%j.out
-#SBATCH --error=logs/regen_smoothness_%j.err
+#SBATCH --output=logs/smoothness_%j.out
+#SBATCH --error=logs/smoothness_%j.err
 #SBATCH --time=00:20:00
 #SBATCH --mem-per-cpu=8G
 #SBATCH --ntasks=1
@@ -11,7 +11,7 @@ module load stack/2024-05 gcc/13.2.0 python/3.11.6_cuda
 source ~/venv/component-placement/bin/activate
 cd ~/projects/component-placement-model
 
-# Regenerate the 6 latent-smoothness figures with larger axis fonts.
+# Generate the 6 latent-smoothness figures for the report.
 # Uses the seed-0 projector checkpoints (same models as the report).
 # model_key : checkpoint : latex_prefix
 declare -A CKPT=(
@@ -25,7 +25,7 @@ mkdir -p latex/smoothness
 
 for MODEL in mlp ctatiss parallel; do
     for CLEANUP in off on; do
-        OUT="plots/smoothness_regen/${MODEL}_cleanup-${CLEANUP}"
+        OUT="plots/smoothness/${MODEL}_cleanup-${CLEANUP}"
         mkdir -p "$OUT"
         echo "=== smoothness: $MODEL cleanup=$CLEANUP ==="
         python -u scripts/eval.py \

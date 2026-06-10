@@ -98,7 +98,7 @@ def train(args):
             else:
                 bx, zg = model(vols, z)
 
-            compactness_kind = "april" if is_cond else "simple"
+            compactness_kind = "slender" if is_cond else "simple"
             L = compute_losses(
                 bx,
                 vols,
@@ -221,8 +221,6 @@ def train(args):
 
     # ── Save ──────────────────────────────────────────────
     suffix = f"_{args.ablation}" if args.ablation != "baseline" else ""
-    if is_cond:
-        suffix = f"{suffix}_april"
     name = f"{args.model}_{args.training}_plain{suffix}_s{args.seed}.pth"
     path = os.path.join("experiments", name)
     os.makedirs(os.path.dirname(path), exist_ok=True)

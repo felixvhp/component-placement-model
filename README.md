@@ -72,7 +72,7 @@ python scripts/eval.py --weights path/to/model.pth --model cond_parallel --condi
 
 On the cluster, batched runs are launched via the scripts in `slurm/`, e.g.:
 ```
-sbatch slurm/train_cond_april.slurm
+sbatch slurm/train_conditional.slurm
 ```
 
 ---
