@@ -29,7 +29,7 @@ cd ~/projects/component-placement-model
 
 # ─── Train ──────────────────────────────────────────
 echo "=== Training: model=$MODEL seed=$SEED recipe=$RECIPE ==="
-python -u train.py \
+python -u scripts/train.py \
     --model $MODEL \
     --training $TRAINING \
     --seed $SEED \
@@ -48,7 +48,7 @@ fi
 for SEQ_LEN in 3 10; do
     for CLEANUP in off on; do
         echo "=== Eval: $MODEL seed=$SEED sl=$SEQ_LEN cleanup=$CLEANUP ==="
-        python -u eval.py \
+        python -u scripts/eval.py \
             --model $MODEL \
             --weights $WEIGHTS \
             --seq_len $SEQ_LEN \

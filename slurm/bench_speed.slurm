@@ -12,7 +12,7 @@ source ~/venv/component-placement/bin/activate
 cd ~/projects/component-placement-model
 
 echo "=== Speed benchmark: AR-Transformer vs Parallel ==="
-python -u bench_speed.py \
+python -u scripts/bench_speed.py \
     --batch 100 \
     --seq_lens 3 10 \
     --seeds 10 \

@@ -11,9 +11,13 @@ import wandb
 from cpm.config import (
     get_loss_weights,
     latent_dim,
-    objective_weights as ow,
-    projector_config as pcfg,
     volume_limits,
+)
+from cpm.config import (
+    objective_weights as ow,
+)
+from cpm.config import (
+    projector_config as pcfg,
 )
 from cpm.constraints import (
     gated_ema_update,

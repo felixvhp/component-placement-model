@@ -117,7 +117,7 @@ max-args = 5
 "tests/**/*" = ["PLR2004"]  # allow magic values in tests
 # interactive.py is a matplotlib-widget dev tool: callbacks need globals, and it
 # keeps commented-out model configs as quick toggles.
-"interactive.py" = ["PLW0602", "PLW0603", "ERA001"]
+"scripts/interactive.py" = ["PLW0602", "PLW0603", "ERA001"]
 
 [tool.mypy]
 warn_redundant_casts = true

@@ -21,11 +21,12 @@ How can a generative model produce constraint-respecting 3D component layouts in
 ## Project Structure
 ```
 component-placement-model/
-├── train.py                       # Thin CLI entry point (delegates to cpm.training)
-├── eval.py                        # Evaluation: metrics, smoothness, density sweeps
-├── interactive.py                 # Interactive layout visualization tool
-├── bench_speed.py                 # Inference speed benchmark
-├── bootstrap_env.py               # Conda environment setup
+├── scripts/                       # runnable entry points
+│   ├── train.py                   # Thin CLI (delegates to cpm.training)
+│   ├── eval.py                    # Evaluation: metrics, smoothness, density sweeps
+│   ├── interactive.py             # Interactive layout visualization tool
+│   ├── bench_speed.py             # Inference speed benchmark
+│   └── bootstrap_env.py           # Conda environment setup
 ├── cpm/                           # importable package (pip install -e .)
 │   ├── config.py                  # Shared constants (box dims, latent dim, volume limits)
 │   ├── inference.py               # Constraint-aware optimized inference
@@ -52,7 +53,7 @@ component-placement-model/
 
 ## Setup
 ```
-python bootstrap_env.py
+python scripts/bootstrap_env.py
 conda activate gcp-env
 pip install -e .          # makes `import cpm` work from anywhere
 ```
@@ -61,12 +62,12 @@ pip install -e .          # makes `import cpm` work from anywhere
 
 Train a model (see `--help` for all options):
 ```
-python train.py --model cond_parallel --training ramp --cond-recipe april --seed 0
+python scripts/train.py --model cond_parallel --training ramp --seed 0
 ```
 
 Evaluate a trained checkpoint:
 ```
-python eval.py --weights path/to/model.pth --model cond_parallel --conditional
+python scripts/eval.py --weights path/to/model.pth --model cond_parallel --conditional
 ```
 
 On the cluster, batched runs are launched via the scripts in `slurm/`, e.g.:

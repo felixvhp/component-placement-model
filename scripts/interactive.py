@@ -22,9 +22,7 @@ MODEL_CONFIGS = {
         #    os.path.dirname(__file__), "experiments/mlp_projector_plain_s42.pth"
         # ),
         "cls": CTATISSBoxGenerator,
-        "path": os.path.join(
-            os.path.dirname(__file__), "experiments/ctatiss_projector_plain_s3.pth"
-        ),
+        "path": "experiments/ctatiss_projector_plain_s3.pth",
         # "cls": ParallelBoxGenerator,
         # "path": os.path.join(
         #   os.path.dirname(__file__),
@@ -33,10 +31,7 @@ MODEL_CONFIGS = {
     },
     "conditional": {
         "cls": ConditionalParallelBoxGenerator,
-        "path": os.path.join(
-            os.path.dirname(__file__),
-            "experiments/cond_parallel_projector_plain_s42_3.pth",
-        ),
+        "path": "experiments/cond_parallel_projector_plain_s42_3.pth",
     },
 }
 

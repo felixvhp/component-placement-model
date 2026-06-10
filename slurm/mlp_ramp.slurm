@@ -19,7 +19,7 @@ source ~/venv/component-placement/bin/activate
 cd ~/projects/component-placement-model
 
 echo "=== Training: mlp ramp seed=$SEED ==="
-python -u train.py \
+python -u scripts/train.py \
     --model mlp \
     --training ramp \
     --seed $SEED \
@@ -37,7 +37,7 @@ fi
 for SEQ_LEN in 3 10; do
     for CLEANUP in off on; do
         echo "=== Eval: mlp_ramp sl=$SEQ_LEN cleanup=$CLEANUP ==="
-        python -u eval.py \
+        python -u scripts/eval.py \
             --model mlp \
             --weights $WEIGHTS \
             --seq_len $SEQ_LEN \

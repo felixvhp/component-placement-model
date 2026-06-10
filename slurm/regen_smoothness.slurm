@@ -28,7 +28,7 @@ for MODEL in mlp ctatiss parallel; do
         OUT="plots/smoothness_regen/${MODEL}_cleanup-${CLEANUP}"
         mkdir -p "$OUT"
         echo "=== smoothness: $MODEL cleanup=$CLEANUP ==="
-        python -u eval.py \
+        python -u scripts/eval.py \
             --model "$MODEL" \
             --weights "${CKPT[$MODEL]}" \
             --seq_len 10 \

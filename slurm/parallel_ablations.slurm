@@ -28,7 +28,7 @@ source ~/venv/component-placement/bin/activate
 cd ~/projects/component-placement-model
 
 echo "=== Training: parallel ablation=$ABLATION seed=$SEED ==="
-python -u train.py \
+python -u scripts/train.py \
     --model parallel \
     --training projector \
     --seed $SEED \
@@ -47,7 +47,7 @@ fi
 for SEQ_LEN in 3 10; do
     for CLEANUP in off on; do
         echo "=== Eval: ablation=$ABLATION sl=$SEQ_LEN cleanup=$CLEANUP ==="
-        python -u eval.py \
+        python -u scripts/eval.py \
             --model parallel \
             --ablation $ABLATION \
             --weights $WEIGHTS \

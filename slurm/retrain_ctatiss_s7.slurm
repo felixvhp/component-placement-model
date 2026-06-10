@@ -24,7 +24,7 @@ rm -f results2/uncond/ctatiss_sl3_s7/results_ctatiss_sl3_cleanup-*.json
 rm -f results2/uncond/ctatiss_sl10_s7/results_ctatiss_sl10_cleanup-*.json
 
 echo "=== Training: $MODEL seed=$SEED training=$TRAINING ==="
-python -u train.py \
+python -u scripts/train.py \
     --model $MODEL \
     --training $TRAINING \
     --seed $SEED \
@@ -50,7 +50,7 @@ print('checkpoint is clean')
 for SEQ_LEN in 3 10; do
     for CLEANUP in off on; do
         echo "=== Eval: sl=$SEQ_LEN cleanup=$CLEANUP ==="
-        python -u eval.py \
+        python -u scripts/eval.py \
             --model $MODEL \
             --weights $WEIGHTS \
             --seq_len $SEQ_LEN \

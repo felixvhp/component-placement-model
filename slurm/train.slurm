@@ -42,7 +42,7 @@ fi
 
 # ─── Train ──────────────────────────────────────────
 echo "=== Training: model=$MODEL seed=$SEED training=$TRAINING ==="
-python -u train.py \
+python -u scripts/train.py \
     --model $MODEL \
     --training $TRAINING \
     --seed $SEED \
@@ -62,7 +62,7 @@ if [ $IS_COND -eq 0 ]; then
     for SEQ_LEN in 3 10; do
         for CLEANUP in off on; do
             echo "=== Eval: $MODEL sl=$SEQ_LEN cleanup=$CLEANUP ==="
-            python -u eval.py \
+            python -u scripts/eval.py \
                 --model $MODEL \
                 --weights $WEIGHTS \
                 --seq_len $SEQ_LEN \
@@ -76,7 +76,7 @@ else
     # Conditional: seq_len=10 only × 2 cleanup = 2 eval calls (density sweep auto-runs)
     for CLEANUP in off on; do
         echo "=== Eval: $MODEL cleanup=$CLEANUP ==="
-        python -u eval.py \
+        python -u scripts/eval.py \
             --model $MODEL \
             --weights $WEIGHTS \
             --seq_len 10 \
