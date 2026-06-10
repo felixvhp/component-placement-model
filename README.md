@@ -87,6 +87,16 @@ sbatch slurm/train_conditional.slurm
 
 ---
 
+## Handover / Next Steps
+
+For anyone continuing this project:
+
+- **Where it stands.** The four box generators (`mlp`, `ctatiss`, `parallel`, `cond_parallel`) are implemented, trained, and compared in the report. Canonical checkpoints live in `checkpoints/`, and every result maps to a job in `slurm/` (see `slurm/README.md`).
+- **GLUE integration is documented, not yet wired.** `INTEGRATION.md` gives the exact contract for dropping a model into GLUE's internals subsystem, but nothing here imports `UAV` yet — actually plugging it in is the first concrete task. `cond_parallel` additionally needs GLUE's `internals_inference_batched` extended to pass a constraint `target` (see `INTEGRATION.md`).
+- **Research directions** are in the report's *Limitations and Future Work* (and noted throughout) — see `latex/main.pdf`.
+
+---
+
 ## References
 
 Key references: Vaswani et al. (Transformers), Ho et al. (Diffusion Models), Aebersold et al. (GLUE), and layout generation works including LayoutDM, ATISS, and House-GAN.
