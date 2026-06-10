@@ -27,7 +27,6 @@ echo "=== Training: $MODEL seed=$SEED training=$TRAINING ==="
 python -u train.py \
     --model $MODEL \
     --training $TRAINING \
-    --dpp plain \
     --seed $SEED \
     --max-seq-length 10 \
     --run-name "${MODEL}_${TRAINING}_s${SEED}_retrain"

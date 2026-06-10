@@ -12,8 +12,6 @@ from cpm.geometry.internals import BatchInternals
 from cpm.losses import (
     DPP_AR_loss,
     DPP_loss_adjacency,
-    PA_DPP_AR_loss,
-    PA_DPP_loss_adjacency,
     mi_loss,
 )
 
@@ -30,7 +28,6 @@ def parse_args():
         default="ctatiss",
     )
     p.add_argument("--training", choices=["ramp", "projector"], default="ramp")
-    p.add_argument("--dpp", choices=["plain", "padpp"], default="plain")
     p.add_argument("--epochs", type=int, default=2500)
     p.add_argument("--lr", type=float, default=5e-4)
     p.add_argument("--batch-size", type=int, default=256)
@@ -49,21 +46,7 @@ def parse_args():
             "no_vol_concat",
             "small",
             "large",
-            "no_mi",
         ],
-    )
-    p.add_argument(
-        "--cond-recipe",
-        type=str,
-        default="default",
-        choices=["default", "april_unif", "april"],
-        help="Conditional training recipe. "
-        "'default' = single random sl/epoch, density=0.3, target_strength=0.3, "
-        "simple side-area compactness. "
-        "'april_unif' = loop sl=1..max_sl/epoch, per-example density U(0, 0.5), "
-        "target_strength=0.8, simple side-area compactness. "
-        "'april' = full April 24 baseline: loop sl=1..max_sl/epoch, density=0.3 fixed, "
-        "target_strength=0.8, slenderness + bbox_volume compactness.",
     )
     return p.parse_args()
 
@@ -98,7 +81,6 @@ def compute_losses(
     latent_codes,
     z_guess,
     seq_length,
-    use_padpp,
     target_adj=None,
     compactness_kind="simple",
 ):
@@ -118,7 +100,7 @@ def compute_losses(
 
     # Compactness
     if compactness_kind == "april":
-        # April 24 baseline mix: slenderness + bbox-volume fill ratio
+        # using old compactness function for backwards compability, can experiment with new one
         frontal_area = internals.getRoughViewArea(view="frontal")
         side_view_area = internals.getRoughViewArea(view="side")
         top_view_area = internals.getRoughViewArea(view="top")
@@ -131,12 +113,6 @@ def compute_losses(
         norm = target_volumes.sum(dim=1) ** (2 / 3)
         L["compactness"] = (internals.getRoughViewArea(view="side") / norm).mean()
 
-    # Quality for PA-DPP
-    q = None
-    if use_padpp:
-        bbox_vol = internals.getRoughVolume() / target_volumes.sum(dim=1)
-        q = 1.0 / bbox_vol.clamp(min=0.1)
-
     # DPP
     if seq_length > 1:
         ar = torch.log(
@@ -145,14 +121,8 @@ def compute_losses(
             )
         )
         Ax, _, Az = internals.getAdjacency()
-        L["dpp_ar"] = PA_DPP_AR_loss(ar, q) if q is not None else DPP_AR_loss(ar)
-        ldv_x = (
-            PA_DPP_loss_adjacency(Ax, q) if q is not None else DPP_loss_adjacency(Ax)
-        )
-        ldv_z = (
-            PA_DPP_loss_adjacency(Az, q) if q is not None else DPP_loss_adjacency(Az)
-        )
-        L["ldv"] = ldv_x + ldv_z
+        L["dpp_ar"] = DPP_AR_loss(ar)
+        L["ldv"] = DPP_loss_adjacency(Ax) + DPP_loss_adjacency(Az)
     else:
         L["dpp_ar"] = torch.tensor(0.0, device=device)
         L["ldv"] = torch.tensor(0.0, device=device)
@@ -205,8 +175,6 @@ def make_model_with_ablation(args, device):
     elif args.ablation == "large":
         kwargs["d_model"] = 512
         kwargs["n_layers"] = 6
-    elif args.ablation == "no_mi":
-        pass  # handled in loss computation, not architecture
     else:
         raise ValueError(f"unknown ablation: {args.ablation}")
 
@@ -236,8 +204,6 @@ def train(args):
     is_ar = args.model in ("mlp", "ctatiss")
     is_cond = args.model in ("cond_parallel",)
     use_proj = args.training == "projector"
-    use_padpp = args.dpp == "padpp"
-    use_mi = args.ablation != "no_mi"
 
     wandb.init(project="box-arrangement", name=args.run_name or None, config=vars(args))
 
@@ -259,7 +225,7 @@ def train(args):
         optimizer.zero_grad()
         z = torch.randn(args.batch_size, latent_dim, device=device)
 
-        loop_all_sl = is_ar or (is_cond and args.cond_recipe in ("april_unif", "april"))
+        loop_all_sl = is_ar or is_cond
         seq_lengths = (
             range(1, args.max_seq_length + 1)
             if loop_all_sl
@@ -281,36 +247,24 @@ def train(args):
             if is_cond:
                 from cpm.constraints import sample_target
 
-                if args.cond_recipe == "april_unif":
-                    density = torch.rand(args.batch_size, device=device) * 0.5
-                    tgt_strength = 0.8
-                elif args.cond_recipe == "april":
-                    density = 0.3
-                    tgt_strength = 0.8
-                else:
-                    density = 0.3
-                    tgt_strength = 0.3
                 tgt_adj = sample_target(
                     args.batch_size,
                     sl,
-                    density=density,
-                    target_strength=tgt_strength,
+                    density=0.3,
+                    target_strength=0.8,
                     device=device,
                 )
                 bx, zg = model(vols, z, target=tgt_adj)
             else:
                 bx, zg = model(vols, z)
 
-            compactness_kind = (
-                "april" if (is_cond and args.cond_recipe == "april") else "simple"
-            )
+            compactness_kind = "april" if is_cond else "simple"
             L = compute_losses(
                 bx,
                 vols,
                 z,
                 zg,
                 sl,
-                use_padpp,
                 tgt_adj,
                 compactness_kind=compactness_kind,
             )
@@ -352,7 +306,7 @@ def train(args):
                     ow["compactness"] * L["compactness"]
                     + ow["dpp_aspect_ratios"] * L["dpp_ar"]
                     + ow["ldv"] * L["ldv"]
-                    + (ow["infonce"] * L["mi"] if use_mi else 0.0)
+                    + ow["infonce"] * L["mi"]
                     + ow.get("conform", 30.0) * L.get("conform", 0.0)
                 )
 
@@ -367,7 +321,7 @@ def train(args):
                     + λc * L["compactness"]
                     + λl * L["ldv"]
                     + λa * L["dpp_ar"]
-                    + (λm * L["mi"] if use_mi else 0.0)
+                    + λm * L["mi"]
                     + λcf * L.get("conform", 0.0)
                 )
 
@@ -427,9 +381,9 @@ def train(args):
 
     # ── Save ──────────────────────────────────────────────
     suffix = f"_{args.ablation}" if args.ablation != "baseline" else ""
-    if is_cond and args.cond_recipe != "default":
-        suffix = f"{suffix}_{args.cond_recipe}"
-    name = f"{args.model}_{args.training}_{args.dpp}{suffix}_s{args.seed}.pth"
+    if is_cond:
+        suffix = f"{suffix}_april"
+    name = f"{args.model}_{args.training}_plain{suffix}_s{args.seed}.pth"
     path = os.path.join(os.path.dirname(__file__), "experiments", name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     torch.save(model.state_dict(), path)

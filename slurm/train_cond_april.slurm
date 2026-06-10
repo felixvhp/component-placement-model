@@ -32,8 +32,6 @@ echo "=== Training: model=$MODEL seed=$SEED recipe=$RECIPE ==="
 python -u train.py \
     --model $MODEL \
     --training $TRAINING \
-    --dpp plain \
-    --cond-recipe $RECIPE \
     --seed $SEED \
     --max-seq-length 10 \
     --run-name "${MODEL}_${RECIPE}_s${SEED}"

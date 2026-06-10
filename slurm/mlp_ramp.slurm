@@ -22,7 +22,6 @@ echo "=== Training: mlp ramp seed=$SEED ==="
 python -u train.py \
     --model mlp \
     --training ramp \
-    --dpp plain \
     --seed $SEED \
     --max-seq-length 10 \
     --run-name "mlp_ramp_s${SEED}"

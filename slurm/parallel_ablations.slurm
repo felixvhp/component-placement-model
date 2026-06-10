@@ -31,7 +31,6 @@ echo "=== Training: parallel ablation=$ABLATION seed=$SEED ==="
 python -u train.py \
     --model parallel \
     --training projector \
-    --dpp plain \
     --seed $SEED \
     --max-seq-length 10 \
     --ablation $ABLATION \
