@@ -193,7 +193,8 @@ logs/
 results/
 smoothness/
 plots/
-latex/
+latex/*
+!latex/main.pdf
 tmpdb_*/
 
 # Model checkpoints (experiments/ are ignored; the canonical ones in checkpoints/ are committed)

@@ -48,7 +48,7 @@ component-placement-model/
 │       └── components.py          # Shared building blocks (FourierEncoding, AuxiliaryPredictor)
 ├── slurm/                         # SLURM job scripts (training, ablations, benchmarks)
 ├── tests/
-└── latex/                         # Report sources
+└── latex/main.pdf                 # Compiled report (LaTeX sources gitignored)
 ```
 
 ## Setup

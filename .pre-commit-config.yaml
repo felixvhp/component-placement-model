@@ -6,7 +6,7 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
-        exclude: ^checkpoints/  # committed model weights are intentionally large
+        exclude: ^(checkpoints/|latex/main\.pdf$)  # committed weights + report PDF are intentionally large
       - id: check-merge-conflict
       - id: debug-statements
       - id: check-docstring-first
