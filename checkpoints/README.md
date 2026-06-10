@@ -8,7 +8,7 @@ the gitignored `experiments/` folder.
 
 - **`mlp.pth`**: MLP baseline (`mlp`), projector training, seed 42 — GLUE's original internals model
 - **`ctatiss.pth`**: ATISS-style AR transformer (`ctatiss`), projector training, seed 42
-- **`parallel.pth`**: Parallel decoder (`parallel`), projector training, seed 42
+- **`parallel.pth`**: Parallel decoder (`parallel`), projector training, seed 1
 - **`cond_parallel.pth`**: Conditional parallel model (`cond_parallel`), seed 42 — trained with constraint density 0.3 and target_strength 0.8
 
 ## Loading
