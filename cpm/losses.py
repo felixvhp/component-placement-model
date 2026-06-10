@@ -1,3 +1,5 @@
+"""Diversity losses (DPP variants for LDV, mutual information) used in training and evaluation."""
+
 import torch
 
 

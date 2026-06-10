@@ -1,3 +1,5 @@
+"""Autoregressive MLP box generator (mlp) — GLUE's original internals model."""
+
 import torch
 from torch import nn
 

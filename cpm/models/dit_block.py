@@ -1,3 +1,5 @@
+"""DiT adaLN-Zero transformer blocks for box generation."""
+
 import torch
 from torch import nn
 

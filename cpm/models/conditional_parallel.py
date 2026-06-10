@@ -1,3 +1,5 @@
+"""Constraint-conditioned parallel decoder box generator (cond_parallel)."""
+
 import torch
 from torch import nn
 

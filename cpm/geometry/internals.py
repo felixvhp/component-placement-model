@@ -1,3 +1,5 @@
+"""Differentiable component-box geometry: overlap, volume, view areas, and adjacency."""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch

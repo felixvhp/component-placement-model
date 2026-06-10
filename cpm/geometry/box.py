@@ -1,3 +1,5 @@
+"""Bounding-box primitives (single and batched): corners, sizes, and volume."""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch

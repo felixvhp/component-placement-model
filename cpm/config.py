@@ -1,3 +1,5 @@
+"""Shared constants and loss-weight / projector configuration."""
+
 #  Shared constants
 
 latent_dim = 4

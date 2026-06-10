@@ -1,3 +1,5 @@
+"""Gradient-preserving ``unique`` autograd function."""
+
 import torch
 from torch.autograd import Function
 

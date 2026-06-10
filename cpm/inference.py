@@ -1,3 +1,5 @@
+"""Constraint-aware inference with the differentiable projection / cleanup step."""
+
 import torch
 
 from .config import volume_limits

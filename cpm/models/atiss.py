@@ -1,3 +1,5 @@
+"""ATISS-style autoregressive transformer box generator (ctatiss)."""
+
 import torch
 from torch import nn
 

@@ -1,3 +1,5 @@
+"""DETR-style parallel decoder box generator (parallel)."""
+
 import torch
 from torch import nn
 
